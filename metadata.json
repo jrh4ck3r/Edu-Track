@@ -1,0 +1,7 @@
+{
+  "name": "EduTrack: Student Performance & Transparency System",
+  "description": "A comprehensive platform for tracking student academic progress, providing rule-based and AI-powered performance analysis, teacher feedback, and well-being monitoring for students, parents, and educators.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
