@@ -23,7 +23,7 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ teacher, students, onAddM
   const [searchTerm, setSearchTerm] = useState('');
 
   const teacherClasses = classes.filter(c => c.teacherId === teacher.id);
-  
+
   const handleSubmitMark = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudentIc || !selectedSubjectId || !score) return;
@@ -58,30 +58,30 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ teacher, students, onAddM
   const studentMarks = marks.filter(m => m.studentIcNumber === selectedStudentIc);
   const selectedStudent = students.find(s => s.icNumber === selectedStudentIc);
 
-  const filteredStudents = students.filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filteredStudents = students.filter(s =>
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (s.icNumber && s.icNumber.includes(searchTerm))
   );
 
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-10">
-        <h1 className="text-4xl font-black text-slate-900 tracking-tight">Teacher Console</h1>
+        <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Teacher Console</h1>
         <p className="text-slate-500 font-medium">Manage academic performance and student well-being.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* Student Selection Panel */}
         <div className="lg:col-span-1">
-          <div className="bg-white p-8 rounded-[2rem] shadow-xl border border-slate-100 sticky top-10">
+          <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-xl border border-slate-100 lg:sticky lg:top-10">
             <h3 className="text-xl font-black mb-6 flex items-center gap-2">
               <UserIcon className="text-indigo-600" size={24} />
               Students
             </h3>
-            
+
             <div className="relative mb-6">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              <input 
+              <input
                 type="text"
                 placeholder="Search by IC or Name..."
                 value={searchTerm}
@@ -95,11 +95,10 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ teacher, students, onAddM
                 <button
                   key={s.id}
                   onClick={() => setSelectedStudentIc(s.icNumber || '')}
-                  className={`w-full text-left p-4 rounded-2xl transition-all border-2 ${
-                    selectedStudentIc === s.icNumber 
-                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-xl shadow-indigo-100' 
-                    : 'bg-white border-transparent hover:border-slate-100 hover:bg-slate-50 text-slate-700 shadow-sm'
-                  }`}
+                  className={`w-full text-left p-4 rounded-2xl transition-all border-2 ${selectedStudentIc === s.icNumber
+                      ? 'bg-indigo-600 border-indigo-600 text-white shadow-xl shadow-indigo-100'
+                      : 'bg-white border-transparent hover:border-slate-100 hover:bg-slate-50 text-slate-700 shadow-sm'
+                    }`}
                 >
                   <p className="font-black text-sm">{s.name}</p>
                   <p className={`text-[10px] font-mono mt-1 ${selectedStudentIc === s.icNumber ? 'text-indigo-200' : 'text-slate-400'}`}>
@@ -139,7 +138,7 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ teacher, students, onAddM
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Grade Entry */}
-                <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
+                <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-100">
                   <h3 className="text-xl font-black mb-6 flex items-center gap-2">
                     <BookOpen className="text-indigo-600" size={24} />
                     Input Grade
@@ -147,7 +146,7 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ teacher, students, onAddM
                   <form onSubmit={handleSubmitMark} className="space-y-5">
                     <div>
                       <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Subject</label>
-                      <select 
+                      <select
                         value={selectedSubjectId}
                         onChange={(e) => setSelectedSubjectId(e.target.value)}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
@@ -161,7 +160,7 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ teacher, students, onAddM
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Assessment</label>
-                        <select 
+                        <select
                           value={assessmentType}
                           onChange={(e) => setAssessmentType(e.target.value)}
                           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
@@ -173,7 +172,7 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ teacher, students, onAddM
                       </div>
                       <div>
                         <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Score</label>
-                        <input 
+                        <input
                           type="number" max="100" min="0" value={score}
                           onChange={(e) => setScore(e.target.value)}
                           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
@@ -189,7 +188,7 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ teacher, students, onAddM
                 </div>
 
                 {/* Feedback Entry */}
-                <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
+                <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-100">
                   <h3 className="text-xl font-black mb-6 flex items-center gap-2">
                     <ClipboardCheck className="text-emerald-600" size={24} />
                     Observations
@@ -201,9 +200,8 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ teacher, students, onAddM
                         {Object.values(WellBeingStatus).map(status => (
                           <button
                             key={status} type="button" onClick={() => setWellBeing(status)}
-                            className={`py-2 px-1 rounded-lg border text-[10px] font-black uppercase transition-all ${
-                              wellBeing === status ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'
-                            }`}
+                            className={`py-2 px-1 rounded-lg border text-[10px] font-black uppercase transition-all ${wellBeing === status ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'
+                              }`}
                           >
                             {status.split(' ')[0]}
                           </button>
@@ -212,7 +210,7 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ teacher, students, onAddM
                     </div>
                     <div>
                       <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Qualitative Feedback</label>
-                      <textarea 
+                      <textarea
                         value={comment} onChange={(e) => setComment(e.target.value)} rows={3}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                         placeholder="Insights on progress..."

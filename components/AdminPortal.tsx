@@ -15,7 +15,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
   const [activeTab, setActiveTab] = useState<'users' | 'classes'>('users');
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
-  
+
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserRole, setNewUserRole] = useState<UserRole>('STUDENT');
@@ -52,8 +52,8 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
     setNewClassTeacherId('');
   };
 
-  const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filteredUsers = users.filter(u =>
+    u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (u.icNumber && u.icNumber.includes(searchTerm))
   );
@@ -62,19 +62,19 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="flex justify-between items-center mb-10">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-10">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight">System Admin</h1>
+          <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">System Admin</h1>
           <p className="text-slate-500 font-medium">Global governance and institution management.</p>
         </div>
         <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
-          <button 
+          <button
             onClick={() => setActiveTab('users')}
             className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'users' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}
           >
             User Directory
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('classes')}
             className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'classes' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}
           >
@@ -85,18 +85,18 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
 
       {activeTab === 'users' ? (
         <>
-          <div className="flex justify-between items-center mb-6">
-            <div className="relative w-full max-w-md">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div className="relative w-full md:max-w-md">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input 
-                type="text" 
-                placeholder="Search by name, email or IC..." 
+              <input
+                type="text"
+                placeholder="Search by name, email or IC..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
               />
             </div>
-            <button 
+            <button
               onClick={() => setShowAddForm(!showAddForm)}
               className="bg-indigo-600 text-white px-8 py-3 rounded-2xl flex items-center gap-2 font-black shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all"
             >
@@ -111,26 +111,26 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
               <form onSubmit={handleAddUser} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div>
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Full Name</label>
-                  <input 
+                  <input
                     value={newUserName}
                     onChange={(e) => setNewUserName(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" 
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="Alice Johnson"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Email Address</label>
-                  <input 
+                  <input
                     value={newUserEmail}
                     onChange={(e) => setNewUserEmail(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" 
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="alice@school.com"
                     type="email"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Role</label>
-                  <select 
+                  <select
                     value={newUserRole}
                     onChange={(e) => setNewUserRole(e.target.value as UserRole)}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
@@ -144,10 +144,10 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
                 {newUserRole === 'STUDENT' && (
                   <div>
                     <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">IC Number</label>
-                    <input 
+                    <input
                       value={newUserIc}
                       onChange={(e) => setNewUserIc(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" 
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
                       placeholder="XXXXXX-XX-XXXX"
                     />
                   </div>
@@ -187,11 +187,10 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
                         </div>
                       </td>
                       <td className="px-8 py-5">
-                        <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
-                          user.role === 'ADMIN' ? 'bg-amber-50 border-amber-200 text-amber-700' : 
-                          user.role === 'TEACHER' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' :
-                          user.role === 'STUDENT' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-600'
-                        }`}>
+                        <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${user.role === 'ADMIN' ? 'bg-amber-50 border-amber-200 text-amber-700' :
+                            user.role === 'TEACHER' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' :
+                              user.role === 'STUDENT' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-600'
+                          }`}>
                           {user.role}
                         </span>
                       </td>
@@ -205,9 +204,9 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
                           <button className="p-3 hover:bg-slate-200 rounded-xl text-slate-600 transition-colors">
                             <Edit3 size={18} />
                           </button>
-                          <button 
+                          <button
                             onClick={() => onRemoveUser(user.id)}
-                            className="p-3 hover:bg-rose-100 rounded-xl text-rose-600 transition-colors" 
+                            className="p-3 hover:bg-rose-100 rounded-xl text-rose-600 transition-colors"
                           >
                             <Trash2 size={18} />
                           </button>
@@ -231,16 +230,16 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
               <form onSubmit={handleAddClass} className="space-y-6">
                 <div>
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Class Name</label>
-                  <input 
+                  <input
                     value={newClassName}
                     onChange={(e) => setNewClassName(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" 
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="e.g. Grade 10 Alpha"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Assign Teacher</label>
-                  <select 
+                  <select
                     value={newClassTeacherId}
                     onChange={(e) => setNewClassTeacherId(e.target.value)}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"

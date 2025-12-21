@@ -59,11 +59,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ studentName, marks,
     <div className="max-w-7xl mx-auto p-4 md:p-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Academic Portal</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Academic Portal</h1>
           <p className="text-slate-500">Monitoring performance for <span className="text-indigo-600 font-semibold">{studentName}</span></p>
         </div>
         <div className="flex gap-3">
-          <button 
+          <button
             onClick={generatePredictions}
             disabled={isPredicting}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg shadow-sm hover:bg-indigo-100 transition-colors disabled:opacity-50"
@@ -71,7 +71,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ studentName, marks,
             {isPredicting ? <Loader2 size={18} className="animate-spin" /> : <BrainCircuit size={18} />}
             Predict Final Grades
           </button>
-          <button 
+          <button
             onClick={() => window.print()}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg shadow-sm hover:bg-slate-50 transition-colors"
           >
@@ -99,9 +99,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ studentName, marks,
                 <div key={idx} className="p-4 rounded-xl border border-slate-100 bg-slate-50">
                   <div className="flex justify-between items-start mb-2">
                     <h4 className="font-bold text-slate-800">{p.subject}</h4>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                      p.predictedScore > p.currentScore ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
-                    }`}>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${p.predictedScore > p.currentScore ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
+                      }`}>
                       {p.predictedScore > p.currentScore ? 'Upward Trend' : 'Steady Trend'}
                     </span>
                   </div>
@@ -134,7 +133,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ studentName, marks,
               <BarChart data={chartData}>
                 <XAxis dataKey="subject" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 100]} hide />
-                <Tooltip 
+                <Tooltip
                   cursor={{ fill: '#f8fafc' }}
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                 />
@@ -150,12 +149,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ studentName, marks,
             <Heart className="text-rose-600" size={20} />
             Well-being Status
           </h3>
-          
+
           <div className="flex-1">
-            <div className={`mb-6 p-5 rounded-2xl flex items-center gap-4 border ${
-              latestWellBeing === WellBeingStatus.GOOD ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 
-              latestWellBeing === WellBeingStatus.MODERATE ? 'bg-amber-50 border-amber-100 text-amber-700' : 'bg-rose-50 border-rose-100 text-rose-700'
-            }`}>
+            <div className={`mb-6 p-5 rounded-2xl flex items-center gap-4 border ${latestWellBeing === WellBeingStatus.GOOD ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                latestWellBeing === WellBeingStatus.MODERATE ? 'bg-amber-50 border-amber-100 text-amber-700' : 'bg-rose-50 border-rose-100 text-rose-700'
+              }`}>
               <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center text-3xl shadow-sm">
                 {latestWellBeing === WellBeingStatus.GOOD ? '😊' : latestWellBeing === WellBeingStatus.MODERATE ? '😐' : '⚠️'}
               </div>
@@ -175,7 +173,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ studentName, marks,
                   "{feedbacks[0]?.comment || "Your instructor hasn't posted any notes yet."}"
                 </p>
                 <div className="absolute -top-2 -left-2 text-indigo-100">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M14.017 21L14.017 18C14.017 16.8954 14.9124 16 16.017 16H19.017C20.1216 16 21.017 16.8954 21.017 18V21C21.017 22.1046 20.1216 23 19.017 23H16.017C14.9124 23 14.017 22.1046 14.017 21ZM3 21L3 18C3 16.8954 3.89543 16 5 16H8C9.10457 16 10 16.8954 10 18V21C10 22.1046 9.10457 23 8 23H5C3.89543 23 3 22.1046 3 21ZM5 3V11C5 12.6569 6.34315 14 8 14H16C17.6569 14 19 12.6569 19 11V3"/></svg>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M14.017 21L14.017 18C14.017 16.8954 14.9124 16 16.017 16H19.017C20.1216 16 21.017 16.8954 21.017 18V21C21.017 22.1046 20.1216 23 19.017 23H16.017C14.9124 23 14.017 22.1046 14.017 21ZM3 21L3 18C3 16.8954 3.89543 16 5 16H8C9.10457 16 10 16.8954 10 18V21C10 22.1046 9.10457 23 8 23H5C3.89543 23 3 22.1046 3 21ZM5 3V11C5 12.6569 6.34315 14 8 14H16C17.6569 14 19 12.6569 19 11V3" /></svg>
                 </div>
               </div>
               <p className="text-[10px] text-slate-400 mt-3 font-medium text-right uppercase tracking-wider">
@@ -187,7 +185,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ studentName, marks,
       </div>
 
       {/* AI Performance Assistant Section */}
-      <div className="bg-slate-900 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl shadow-indigo-900/20">
+      <div className="bg-slate-900 rounded-[2rem] p-6 md:p-10 text-white relative overflow-hidden shadow-2xl shadow-indigo-900/20">
         <div className="relative z-10">
           <div className="flex items-center gap-4 mb-6">
             <div className="p-3 bg-indigo-500/20 rounded-2xl text-indigo-400 border border-indigo-500/30">
@@ -198,13 +196,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ studentName, marks,
               <p className="text-indigo-400/80 text-sm font-medium">Powered by Gemini 3.0 Flash</p>
             </div>
           </div>
-          
+
           {aiInsight ? (
             <div className="prose prose-invert max-w-none">
               <div className="whitespace-pre-wrap text-indigo-100/90 leading-relaxed text-lg font-medium bg-white/5 p-6 rounded-2xl border border-white/10">
                 {aiInsight}
               </div>
-              <button 
+              <button
                 onClick={() => setAiInsight(null)}
                 className="mt-6 text-sm text-indigo-400 hover:text-indigo-300 font-bold uppercase tracking-widest flex items-center gap-2"
               >
@@ -241,7 +239,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ studentName, marks,
             </div>
           )}
         </div>
-        
+
         {/* Background elements */}
         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-indigo-600/10 rounded-full blur-[100px] -mr-40 -mt-40"></div>
         <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-purple-600/10 rounded-full blur-[80px] -ml-20 -mb-20"></div>
@@ -252,7 +250,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ studentName, marks,
 
 const BarChart3 = ({ className, size }: { className?: string; size?: number }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>
+    <path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" />
   </svg>
 );
 
