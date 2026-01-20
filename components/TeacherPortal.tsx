@@ -11,9 +11,10 @@ interface TeacherPortalProps {
   onAddFeedback: (feedback: Omit<Feedback, 'id'>) => void;
   marks: Mark[];
   classes: SchoolClass[];
+  onEnrollStudent: (studentIc: string, classId: string) => void;
 }
 
-const TeacherPortal: React.FC<TeacherPortalProps> = ({ teacher, students, onAddMark, onAddFeedback, marks, classes }) => {
+const TeacherPortal: React.FC<TeacherPortalProps> = ({ teacher, students, onAddMark, onAddFeedback, marks, classes, onEnrollStudent }) => {
   const [selectedStudentIc, setSelectedStudentIc] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [assessmentType, setAssessmentType] = useState(ASSESSMENT_TYPES[0]);
@@ -23,6 +24,18 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ teacher, students, onAddM
   const [searchTerm, setSearchTerm] = useState('');
 
   const teacherClasses = classes.filter(c => c.teacherId === teacher.id);
+  const [enrollClassId, setEnrollClassId] = useState('');
+  const [enrollStudentIc, setEnrollStudentIc] = useState('');
+  const [showEnrollModal, setShowEnrollModal] = useState(false);
+
+  const handleEnrollStudent = () => {
+    if (enrollStudentIc && enrollClassId) {
+      onEnrollStudent(enrollStudentIc, enrollClassId);
+      setEnrollStudentIc('');
+      setEnrollClassId('');
+      setShowEnrollModal(false);
+    }
+  };
 
   const handleSubmitMark = (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,8 +109,8 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ teacher, students, onAddM
                   key={s.id}
                   onClick={() => setSelectedStudentIc(s.icNumber || '')}
                   className={`w-full text-left p-4 rounded-2xl transition-all border-2 ${selectedStudentIc === s.icNumber
-                      ? 'bg-indigo-600 border-indigo-600 text-white shadow-xl shadow-indigo-100'
-                      : 'bg-white border-transparent hover:border-slate-100 hover:bg-slate-50 text-slate-700 shadow-sm'
+                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-xl shadow-indigo-100'
+                    : 'bg-white border-transparent hover:border-slate-100 hover:bg-slate-50 text-slate-700 shadow-sm'
                     }`}
                 >
                   <p className="font-black text-sm">{s.name}</p>
@@ -109,6 +122,14 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ teacher, students, onAddM
                 <p className="text-center py-10 text-slate-400 text-sm italic">No students found.</p>
               )}
             </div>
+
+            <button
+              onClick={() => setShowEnrollModal(true)}
+              className="w-full py-3 bg-indigo-50 text-indigo-600 font-black rounded-xl hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2 mb-2"
+            >
+              <UserIcon size={18} />
+              Enroll New Student
+            </button>
           </div>
         </div>
 
@@ -273,6 +294,61 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({ teacher, students, onAddM
           )}
         </div>
       </div>
+
+      {/* Enrollment Modal */}
+      {showEnrollModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl p-8 animate-in zoom-in-50 duration-200">
+            <h3 className="text-xl font-black mb-2 text-slate-800">Enroll Student</h3>
+            <p className="text-sm text-slate-500 mb-6">Add a student to your class roster.</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Student IC</label>
+                <input
+                  value={enrollStudentIc}
+                  onChange={(e) => setEnrollStudentIc(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                  placeholder="XXXXXX-XX-XXXX"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Target Class</label>
+                <select
+                  value={enrollClassId}
+                  onChange={(e) => setEnrollClassId(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">Select Class</option>
+                  {teacherClasses.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setShowEnrollModal(false);
+                    setEnrollStudentIc('');
+                    setEnrollClassId('');
+                  }}
+                  className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleEnrollStudent}
+                  className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all"
+                >
+                  Enroll
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

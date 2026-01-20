@@ -11,6 +11,8 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  password?: string; // For authentication
+  mustChangePassword?: boolean; // Force password change on next login
   role: UserRole;
   icNumber?: string; // Unique ID for students
   childIcNumbers?: string[]; // For parents to track multiple children
