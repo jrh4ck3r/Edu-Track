@@ -48,13 +48,14 @@ const App: React.FC = () => {
   const replyDiscussionMutation = useMutation(api.discussions.reply);
 
   // Wrappers to match existing prop signatures where possible
-  const users = usersSource.map(u => ({ ...u, id: u._id }));
-  const marks = marksSource.map(m => ({ ...m, id: m._id }));
-  const feedbacks = feedbacksSource.map(f => ({ ...f, id: f._id }));
-  const classes = classesSource.map(c => ({ ...c, id: c._id }));
-  const appointments = appointmentsSource.map(a => ({ ...a, id: a._id }));
-  const availabilitySlots = availabilitySlotsSource.map(s => ({ ...s, id: s._id }));
-  const discussions = discussionsSource.map(d => ({ ...d, id: d._id, replies: d.replies?.map((r: any) => ({ ...r })) || [] }));
+  // Wrappers to match existing prop signatures where possible
+  const users = React.useMemo(() => usersSource.map(u => ({ ...u, id: u._id })), [usersSource]);
+  const marks = React.useMemo(() => marksSource.map(m => ({ ...m, id: m._id })), [marksSource]);
+  const feedbacks = React.useMemo(() => feedbacksSource.map(f => ({ ...f, id: f._id })), [feedbacksSource]);
+  const classes = React.useMemo(() => classesSource.map(c => ({ ...c, id: c._id })), [classesSource]);
+  const appointments = React.useMemo(() => appointmentsSource.map(a => ({ ...a, id: a._id })), [appointmentsSource]);
+  const availabilitySlots = React.useMemo(() => availabilitySlotsSource.map(s => ({ ...s, id: s._id })), [availabilitySlotsSource]);
+  const discussions = React.useMemo(() => discussionsSource.map(d => ({ ...d, id: d._id, replies: d.replies?.map((r: any) => ({ ...r })) || [] })), [discussionsSource]);
 
   // Persistence: Check for logged in user on load
   React.useEffect(() => {
@@ -588,9 +589,16 @@ const App: React.FC = () => {
 
           {currentUser.role === 'PARENT' && activeChild && (
             <StudentDashboard
-              studentName={activeChild.name}
+              student={activeChild}
               marks={marks.filter(m => m.studentIcNumber === activeChild.icNumber)}
-              feedbacks={feedbacks.filter(f => f.studentIcNumber === activeChild.icNumber)}
+              allFeedback={feedbacks.filter(f => f.studentIcNumber === activeChild.icNumber)}
+              teachers={users.filter(u => u.role === 'TEACHER')}
+              appointments={appointments}
+              availabilitySlots={availabilitySlots}
+              onRequestAppointment={requestAppointment}
+              discussions={discussions}
+              onCreateDiscussion={createDiscussionPost}
+              onReplyDiscussion={addDiscussionReply}
             />
           )}
 
