@@ -8,13 +8,14 @@ interface AdminPortalProps {
   onAddUser: (user: Omit<User, 'id'>) => void;
   onRemoveUser: (id: string) => void;
   classes: SchoolClass[];
-  setClasses: React.Dispatch<React.SetStateAction<SchoolClass[]>>;
+  onAddClass: (cls: Omit<SchoolClass, 'id' | 'timetable'>) => void; // Updated Prop
   activeTab: 'users' | 'classes';
   setActiveTab: (tab: 'users' | 'classes') => void;
   onUnlinkChild: (parentId: string, childIc: string) => void;
+  onEnrollStudent: (studentIc: string, classId: string) => void;
 }
 
-const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUser, onUnlinkChild, onEnrollStudent, classes, setClasses, activeTab, setActiveTab }) => {
+const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUser, onUnlinkChild, onEnrollStudent, classes, onAddClass, activeTab, setActiveTab }) => {
   // const [activeTab, setActiveTab] = useState<'users' | 'classes'>('users'); // Removed internal state
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -31,10 +32,15 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
 
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUserName || !newUserEmail) return;
+    const isEmailRequired = newUserRole !== 'STUDENT';
+    if (!newUserName || (isEmailRequired && !newUserEmail)) {
+      if (isEmailRequired && !newUserEmail) alert('Email is required for this role.');
+      return;
+    }
+    const userEmail = newUserEmail || undefined; // Ensure empty string becomes undefined
     onAddUser({
       name: newUserName,
-      email: newUserEmail,
+      email: newUserEmail || '',
       role: newUserRole,
       icNumber: newUserRole === 'STUDENT' ? newUserIc : undefined
     });
@@ -47,19 +53,17 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
   const handleAddClass = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newClassName || !newClassTeacherId) return;
-    const newClass: SchoolClass = {
-      id: 'c_' + Math.random().toString(36).substr(2, 5),
+    onAddClass({
       name: newClassName,
       teacherId: newClassTeacherId
-    };
-    setClasses(prev => [...prev, newClass]);
+    });
     setNewClassName('');
     setNewClassTeacherId('');
   };
 
   const filteredUsers = users.filter(u =>
     u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (u.icNumber && u.icNumber.includes(searchTerm))
   );
 
@@ -124,7 +128,9 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Email Address</label>
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
+                    Email Address {newUserRole === 'STUDENT' && <span className="text-slate-300 normal-case tracking-normal">(Optional)</span>}
+                  </label>
                   <input
                     value={newUserEmail}
                     onChange={(e) => setNewUserEmail(e.target.value)}
