@@ -13,9 +13,10 @@ interface AdminPortalProps {
   setActiveTab: (tab: 'users' | 'classes') => void;
   onUnlinkChild: (parentId: string, childIc: string) => void;
   onEnrollStudent: (studentIc: string, classId: string) => void;
+  onRemoveClass: (classId: string) => void; // New Prop
 }
 
-const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUser, onUnlinkChild, onEnrollStudent, classes, onAddClass, activeTab, setActiveTab }) => {
+const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUser, onUnlinkChild, onEnrollStudent, classes, onAddClass, onRemoveClass, activeTab, setActiveTab }) => {
   // const [activeTab, setActiveTab] = useState<'users' | 'classes'>('users'); // Removed internal state
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -24,11 +25,16 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserRole, setNewUserRole] = useState<UserRole>('STUDENT');
   const [newUserIc, setNewUserIc] = useState('');
+  const [newStudentYear, setNewStudentYear] = useState('Standard 1'); // New State
 
   const [newClassName, setNewClassName] = useState('');
   const [newClassTeacherId, setNewClassTeacherId] = useState('');
   const [enrollClassId, setEnrollClassId] = useState<string | null>(null);
   const [enrollStudentIc, setEnrollStudentIc] = useState('');
+
+  // New state for assigning class from User Directory
+  const [assignClassStudentIc, setAssignClassStudentIc] = useState<string | null>(null);
+  const [assignClassId, setAssignClassId] = useState('');
 
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +48,8 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
       name: newUserName,
       email: newUserEmail || '',
       role: newUserRole,
-      icNumber: newUserRole === 'STUDENT' ? newUserIc : undefined
+      icNumber: newUserRole === 'STUDENT' ? newUserIc : undefined,
+      studentYear: newUserRole === 'STUDENT' ? newStudentYear : undefined
     });
     setNewUserName('');
     setNewUserEmail('');
@@ -153,15 +160,29 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
                   </select>
                 </div>
                 {newUserRole === 'STUDENT' && (
-                  <div>
-                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">IC Number</label>
-                    <input
-                      value={newUserIc}
-                      onChange={(e) => setNewUserIc(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder="XXXXXX-XX-XXXX"
-                    />
-                  </div>
+                  <>
+                    <div className="col-span-1">
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">IC Number</label>
+                      <input
+                        value={newUserIc}
+                        onChange={(e) => setNewUserIc(e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="XXXXXX-XX-XXXX"
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Student Year</label>
+                      <select
+                        value={newStudentYear}
+                        onChange={(e) => setNewStudentYear(e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        {Array.from({ length: 6 }, (_, i) => `Standard ${i + 1}`).map(year => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
                 )}
                 <div className="lg:col-span-4 flex justify-end">
                   <button type="submit" className="bg-slate-900 text-white px-10 py-3 rounded-xl font-black hover:bg-slate-800 transition-all shadow-lg">
@@ -209,6 +230,9 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
                         <p className="text-xs font-mono font-bold text-slate-500">
                           {user.icNumber || user.id}
                         </p>
+                        {user.studentYear && user.role === 'STUDENT' && (
+                          <p className="text-[10px] font-black uppercase text-indigo-400 mt-1">{user.studentYear}</p>
+                        )}
                         {user.role === 'PARENT' && user.childIcNumbers && user.childIcNumbers.length > 0 && (
                           <div className="mt-2 space-y-1">
                             <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Linked Children</p>
@@ -228,6 +252,15 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
                       </td>
                       <td className="px-8 py-5 text-right">
                         <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all">
+                          {user.role === 'STUDENT' && (
+                            <button
+                              onClick={() => setAssignClassStudentIc(user.icNumber || '')}
+                              className="p-3 hover:bg-indigo-100 rounded-xl text-indigo-600 transition-colors"
+                              title="Assign Class"
+                            >
+                              <UserPlus size={18} />
+                            </button>
+                          )}
                           <button className="p-3 hover:bg-slate-200 rounded-xl text-slate-600 transition-colors">
                             <Edit3 size={18} />
                           </button>
@@ -296,7 +329,10 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
                         <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600">
                           <UsersIcon size={24} />
                         </div>
-                        <button className="text-slate-300 hover:text-rose-500 transition-colors">
+                        <button
+                          onClick={() => onRemoveClass(c.id)}
+                          className="text-slate-300 hover:text-rose-500 transition-colors"
+                        >
                           <Trash2 size={18} />
                         </button>
                       </div>
@@ -336,7 +372,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
         </div>
       )}
 
-      {/* Enrollment Modal */}
+      {/* Enrollment Modal (From Class Card) */}
       {
         enrollClassId && (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -377,6 +413,59 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
                     className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all"
                   >
                     Enroll Student
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Assign Class Modal (From User List) */}
+      {
+        assignClassStudentIc && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl p-8 animate-in zoom-in-50 duration-200">
+              <h3 className="text-xl font-black mb-2 text-slate-800">Assign Class</h3>
+              <p className="text-sm text-slate-500 mb-6">Select a class to assign for student with IC: <span className="font-mono font-bold text-slate-900">{assignClassStudentIc}</span></p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Select Class</label>
+                  <select
+                    value={assignClassId}
+                    onChange={(e) => setAssignClassId(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">-- Choose Class --</option>
+                    {classes.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => {
+                      setAssignClassStudentIc(null);
+                      setAssignClassId('');
+                    }}
+                    className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (assignClassId && assignClassStudentIc) {
+                        onEnrollStudent(assignClassStudentIc, assignClassId);
+                        setAssignClassStudentIc(null);
+                        setAssignClassId('');
+                      }
+                    }}
+                    disabled={!assignClassId}
+                    className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Confirm Assignment
                   </button>
                 </div>
               </div>

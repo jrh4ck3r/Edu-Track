@@ -25,6 +25,8 @@ export const create = mutation({
         password: v.string(),
         role: v.union(v.literal('ADMIN'), v.literal('TEACHER'), v.literal('STUDENT'), v.literal('PARENT')),
         icNumber: v.optional(v.string()),
+        mustChangePassword: v.optional(v.boolean()),
+        studentYear: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         // Check for duplicate Email (only if email is provided and not empty)
@@ -64,5 +66,26 @@ export const update = mutation({
     },
     handler: async (ctx, args) => {
         return await ctx.db.patch(args.id, args.updates);
+    },
+});
+
+export const deleteUser = mutation({
+    args: { id: v.id("users") },
+    handler: async (ctx, args) => {
+        await ctx.db.delete(args.id);
+    },
+});
+
+export const unlinkChild = mutation({
+    args: {
+        parentId: v.id("users"),
+        childIc: v.string()
+    },
+    handler: async (ctx, args) => {
+        const parent = await ctx.db.get(args.parentId);
+        if (!parent || !parent.childIcNumbers) return;
+
+        const updatedChildren = parent.childIcNumbers.filter(ic => ic !== args.childIc);
+        await ctx.db.patch(args.parentId, { childIcNumbers: updatedChildren });
     },
 });

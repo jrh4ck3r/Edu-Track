@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Mark, Feedback, WellBeingStatus, User, Appointment, AvailabilitySlot, DiscussionPost, DiscussionReply } from '../types';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import { ResponsiveContainer, BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { SUBJECTS_LIST, COLORS } from '../constants';
 import AnalysisCard from './AnalysisCard';
 import { getAcademicInsights, getGradePrediction } from '../services/geminiService';
-import { Sparkles, Download, MessageSquare, Heart, TrendingUp, BrainCircuit, Loader2, Calendar, Clock, User as UserIcon, Send, MessageCircle, Plus } from 'lucide-react';
+import { Sparkles, Download, MessageSquare, Heart, TrendingUp, BrainCircuit, Loader2, Calendar, Clock, User as UserIcon, Send, MessageCircle, Plus, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface Prediction {
   subject: string;
@@ -24,11 +25,15 @@ interface StudentDashboardProps {
   discussions: DiscussionPost[];
   onCreateDiscussion: (post: Omit<DiscussionPost, 'id' | 'timestamp' | 'likes' | 'replies'>) => void;
   onReplyDiscussion: (postId: string, reply: Omit<DiscussionReply, 'id' | 'timestamp'>) => void;
+  attendance: any[]; // Using any temporarily or importation AttendanceRecord
+  resources: any[]; // Using any temporarily or importation Resource
+  onGetDownloadUrl: (fileId: string) => Promise<string | null>;
 }
 
 const StudentDashboard: React.FC<StudentDashboardProps> = ({
   student, marks, allFeedback, teachers, appointments, availabilitySlots,
-  onRequestAppointment, discussions, onCreateDiscussion, onReplyDiscussion
+  onRequestAppointment, discussions, onCreateDiscussion, onReplyDiscussion,
+  attendance, resources, onGetDownloadUrl
 }) => {
   const [activeTab, setActiveTab] = useState<'academics' | 'mentorship' | 'forum'>('academics');
   const [isGeneratingInsight, setIsGeneratingInsight] = useState(false);
@@ -48,13 +53,18 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [viewPostId, setViewPostId] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState('');
 
-  const chartData = SUBJECTS_LIST.map(sub => {
-    const mark = marks.find(m => m.subjectId === sub.id);
-    return {
-      subject: sub.name,
-      score: mark ? (mark.score / mark.maxScore) * 100 : 0,
-    };
-  });
+  const chartData = useMemo(() => {
+    return SUBJECTS_LIST.map(sub => {
+      const mark = marks.find(m => m.subjectId === sub.id);
+      return {
+        subject: sub.name,
+        score: mark ? (mark.score / mark.maxScore) * 100 : 0,
+      };
+    });
+  }, [marks]);
+
+  const tooltipCursor = useMemo(() => ({ fill: '#f8fafc' }), []);
+  const tooltipStyle = useMemo(() => ({ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }), []);
 
   const generateAIReport = async () => {
     setIsGeneratingInsight(true);
@@ -113,6 +123,16 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     setReplyContent('');
   };
 
+  const handleDownload = async (fileId: string) => {
+    try {
+      const url = await onGetDownloadUrl(fileId);
+      if (url) window.open(url, '_blank');
+      else alert("Could not generate download link.");
+    } catch (e) {
+      alert("Error downloading file.");
+    }
+  };
+
   const latestWellBeing = allFeedback[0]?.wellBeing || WellBeingStatus.GOOD;
 
   return (
@@ -122,12 +142,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
           <h1 className="text-3xl font-black text-slate-900">Student Portal</h1>
           <p className="text-slate-500 font-medium">Welcome back, <span className="text-indigo-600">{student.name}</span></p>
         </div>
-        <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
-          {(['academics', 'mentorship', 'forum'] as const).map(tab => (
+        <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-100 overflow-x-auto max-w-full">
+          {(['academics', 'attendance', 'resources', 'mentorship', 'forum'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-6 py-2 rounded-xl text-sm font-bold capitalize transition-all ${activeTab === tab ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`px-6 py-2 rounded-xl text-sm font-bold capitalize transition-all whitespace-nowrap ${activeTab === tab ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}
             >
               {tab}
             </button>
@@ -193,22 +213,22 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
             <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <BarChart className="text-indigo-600" size={20} />
+                  <BarChart3 className="text-indigo-600" size={20} />
                   Current Subject Performance
                 </h3>
                 <span className="text-xs font-medium text-slate-400">Values in %</span>
               </div>
-              <div className="h-[350px]">
+              <div className="h-[350px] w-full" style={{ minHeight: '350px' }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
+                  <RechartsBarChart data={chartData}>
                     <XAxis dataKey="subject" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
                     <YAxis domain={[0, 100]} hide />
                     <Tooltip
-                      cursor={{ fill: '#f8fafc' }}
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                      cursor={tooltipCursor}
+                      contentStyle={tooltipStyle}
                     />
                     <Bar dataKey="score" fill={COLORS.PRIMARY} radius={[6, 6, 0, 0]} barSize={45} />
-                  </BarChart>
+                  </RechartsBarChart>
                 </ResponsiveContainer>
               </div>
             </div>
@@ -230,6 +250,53 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   <div>
                     <p className="text-xs font-bold uppercase tracking-widest opacity-60">Mental Health</p>
                     <p className="text-2xl font-black">{latestWellBeing}</p>
+                  </div>
+                </div>
+
+                {/* Recent Assessments List */}
+                <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 mb-8">
+                  <h3 className="text-xl font-black mb-6 text-slate-800 flex items-center gap-2">
+                    <FileText className="text-indigo-600" size={24} /> Recent Assessments
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-slate-50 text-left">
+                          <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest pl-4">Subject</th>
+                          <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Assessment</th>
+                          <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                          <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Score</th>
+                          <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right pr-4">Paper</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {marks.filter(m => m.studentIcNumber === student.icNumber).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(mark => (
+                          <tr key={mark.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-4 pl-4 font-bold text-slate-700">{SUBJECTS_LIST.find(s => s.id === mark.subjectId)?.name}</td>
+                            <td className="py-4 text-sm text-slate-500 font-medium">{mark.assessmentType}</td>
+                            <td className="py-4 text-sm text-slate-400 font-mono">{mark.date}</td>
+                            <td className="py-4 text-right font-black text-indigo-600">{mark.score}/{mark.maxScore}</td>
+                            <td className="py-4 text-right pr-4">
+                              {mark.attachmentId ? (
+                                <button
+                                  onClick={() => handleDownload(mark.attachmentId!)}
+                                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors"
+                                >
+                                  <FileText size={14} /> View
+                                </button>
+                              ) : (
+                                <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">No File</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                        {marks.filter(m => m.studentIcNumber === student.icNumber).length === 0 && (
+                          <tr>
+                            <td colSpan={5} className="py-8 text-center text-slate-400 italic">No assessments recorded yet.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 
@@ -520,6 +587,40 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {activeTab === 'resources' && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
+          <h3 className="text-xl font-black mb-6 text-slate-800 flex items-center gap-2">
+            <FileText className="text-indigo-600" size={24} /> Learning Resources
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {resources.filter(r => r.classId === student.assignedClassId).map(res => (
+              <div key={res.id} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 hover:shadow-lg transition-all group">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="p-3 bg-white rounded-xl text-indigo-600 shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                    <FileText size={24} />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-white px-2 py-1 rounded-lg">{res.subject}</span>
+                </div>
+                <h4 className="text-lg font-black text-slate-800 mb-2">{res.title}</h4>
+                <p className="text-sm text-slate-500 mb-6 line-clamp-2">{res.description || "No description provided."}</p>
+
+                <button
+                  onClick={() => handleDownload(res.fileId)}
+                  className="w-full py-3 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all flex items-center justify-center gap-2"
+                >
+                  <Download size={18} /> Download
+                </button>
+              </div>
+            ))}
+            {resources.filter(r => r.classId === student.assignedClassId).length === 0 && (
+              <div className="col-span-full py-12 text-center text-slate-400 italic bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200">
+                No resources uploaded for your class yet.
+              </div>
+            )}
+          </div>
+        </motion.div>
       )}
 
     </div>

@@ -34,6 +34,8 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
   const [activeTab, setActiveTab] = useState<'dashboard' | 'classrooms' | 'appointments'>('dashboard');
 
   const teacherClasses = classes.filter(c => c.teacherId === teacher.id);
+  const teacherClassIds = teacherClasses.map(c => c.id);
+
   const [enrollClassId, setEnrollClassId] = useState('');
   const [enrollStudentIc, setEnrollStudentIc] = useState('');
   const [showEnrollModal, setShowEnrollModal] = useState(false);
@@ -115,8 +117,9 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
   const selectedStudent = students.find(s => s.icNumber === selectedStudentIc);
 
   const filteredStudents = students.filter(s =>
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.icNumber && s.icNumber.includes(searchTerm))
+    (s.assignedClassId && teacherClassIds.includes(s.assignedClassId)) &&
+    (s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.icNumber && s.icNumber.includes(searchTerm)))
   );
 
   return (

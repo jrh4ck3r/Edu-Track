@@ -32,3 +32,10 @@ export const updateTimetable = mutation({
         return await ctx.db.patch(args.classId, { timetable: args.timetable });
     },
 });
+
+export const deleteClass = mutation({
+    args: { id: v.id("classes") },
+    handler: async (ctx, args) => {
+        await ctx.db.delete(args.id);
+    },
+});

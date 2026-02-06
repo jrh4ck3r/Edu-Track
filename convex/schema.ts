@@ -11,6 +11,7 @@ export default defineSchema({
         childIcNumbers: v.optional(v.array(v.string())),
         assignedClassId: v.optional(v.string()),
         mustChangePassword: v.optional(v.boolean()),
+        studentYear: v.optional(v.string()), // Standard 1-6
     }),
     classes: defineTable({
         name: v.string(),
@@ -29,6 +30,31 @@ export default defineSchema({
         maxScore: v.number(),
         assessmentType: v.string(),
         date: v.string(),
+        attachmentId: v.optional(v.string()), // For scanned mark sheet
+    }),
+    attendance: defineTable({
+        studentId: v.string(),
+        classId: v.string(),
+        date: v.string(), // YYYY-MM-DD
+        status: v.union(v.literal('PRESENT'), v.literal('ABSENT'), v.literal('LATE'), v.literal('EXCUSED')),
+    }),
+    notifications: defineTable({
+        userId: v.string(),
+        title: v.string(),
+        message: v.string(),
+        type: v.union(v.literal('GRADE'), v.literal('ATTENDANCE'), v.literal('APPOINTMENT'), v.literal('SYSTEM')),
+        isRead: v.boolean(),
+        relatedId: v.optional(v.string()), // ID of the related object (e.g., mark ID)
+        createdAt: v.string(),
+    }),
+    resources: defineTable({
+        classId: v.string(),
+        teacherId: v.string(),
+        title: v.string(),
+        description: v.optional(v.string()),
+        fileId: v.string(), // Storage ID
+        subject: v.string(),
+        createdAt: v.string(),
     }),
     feedbacks: defineTable({
         studentIcNumber: v.string(),

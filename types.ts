@@ -17,6 +17,7 @@ export interface User {
   icNumber?: string; // Unique ID for students
   childIcNumbers?: string[]; // For parents to track multiple children
   assignedClassId?: string; // For teachers and students
+  studentYear?: string; // Standard 1-6
 }
 
 export interface TimetableEntry {
@@ -104,4 +105,36 @@ export interface DiscussionPost {
   timestamp: string;
   likes: number;
   replies: DiscussionReply[];
+}
+
+export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
+
+export interface AttendanceRecord {
+  id: string;
+  classId: string;
+  studentId: string;
+  date: string;
+  status: AttendanceStatus;
+}
+
+export interface Resource {
+  id: string;
+  classId: string;
+  teacherId: string;
+  title: string;
+  description?: string;
+  fileId: string;
+  subject: string;
+  createdAt: string;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'GRADE' | 'ATTENDANCE' | 'APPOINTMENT' | 'SYSTEM';
+  isRead: boolean;
+  relatedId?: string;
+  createdAt: string;
 }

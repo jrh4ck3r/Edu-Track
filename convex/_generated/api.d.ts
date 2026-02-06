@@ -9,9 +9,12 @@
  */
 
 import type * as appointments from "../appointments.js";
+import type * as attendance from "../attendance.js";
 import type * as classes from "../classes.js";
 import type * as discussions from "../discussions.js";
 import type * as marks from "../marks.js";
+import type * as notifications from "../notifications.js";
+import type * as resources from "../resources.js";
 import type * as users from "../users.js";
 
 import type {
@@ -22,9 +25,12 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   appointments: typeof appointments;
+  attendance: typeof attendance;
   classes: typeof classes;
   discussions: typeof discussions;
   marks: typeof marks;
+  notifications: typeof notifications;
+  resources: typeof resources;
   users: typeof users;
 }>;
 

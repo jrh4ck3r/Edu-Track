@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { User, Mark, Feedback, WellBeingStatus, SchoolClass, Appointment, AvailabilitySlot, DiscussionPost, DiscussionReply } from './types';
+import { User, Mark, Feedback, WellBeingStatus, SchoolClass, Appointment, AvailabilitySlot, DiscussionPost, DiscussionReply, Resource } from './types';
 import { mockUsers, mockMarks, mockFeedbacks, mockClasses } from './mockData';
 import { SUBJECTS_LIST } from './constants';
 import StudentDashboard from './components/StudentDashboard';
 import TeacherPortal from './components/TeacherPortal';
 import AdminPortal from './components/AdminPortal';
+import NotificationCenter from './components/NotificationCenter';
 import { LayoutDashboard, GraduationCap, Users, Settings, LogOut, ChevronRight, Search, PlusCircle, CreditCard, Menu, X, Lock, ArrowLeft } from 'lucide-react';
 
 import { useQuery, useMutation } from "convex/react";
@@ -21,6 +22,41 @@ const App: React.FC = () => {
   const appointmentsSource = useQuery(api.appointments.listAppointments) || [];
   const availabilitySlotsSource = useQuery(api.appointments.listSlots) || [];
   const discussionsSource = useQuery(api.discussions.list) || [];
+  const attendanceSource = useQuery(api.attendance.getAll) || [];
+  const resourcesSource = useQuery(api.resources.getAll) || [];
+
+  // New features queries
+  // In a real app we'd filter these queries by the current user/class to avoid loading everything
+  // For this demo we'll load all and filter client side or assume simple scale
+  // Actually, we can't easily query ALL attendance for ALL classes efficiently without args
+  // So we might need to rely on the components fetching or just use specific args if we hoisted state.
+  // For simplicity given the refactor, we will fetch *all* for now if the query supports it, 
+  // OR we just pass the mutation/query functions to the component if it handles data fetching.
+  // However, the architecture here is "hoist everything".
+  // Let's assume we fetch all attendance records for now? 
+  // My attendance.ts has `getByClassAndDate` which requires args.
+  // So I cannot easy hover-fetch here without current class state.
+  // CHANGE OF PLAN: I will modify `TeacherPortal` to accept the *mutation* and *query functions* or 
+  // I'll keep the "fetch all" approach if I change backend to `listAll` for demo.
+  // BETTER: I'll add a `listAll` for attendance/resources in backend quickly to support this "hoisted" architecture 
+  // OR, simpler: I will just instantiate the hooks INSIDE TeacherPortal for the specific class. 
+  // BUT `App.tsx` controls the props. 
+  // Users refactor instruction: "Refactor TeacherPortal... and add Attendance/Resources".
+  // `TeacherPortal` now takes `attendance` array. So it expects data.
+  // I will update the backend to allow listing all or just pass an empty array initially?
+  // No, I need data. 
+  // I will add `api.attendance.getAll` and `api.resources.getAll` to backend to support this simple architecture.
+  // Wait, I can't easily change backend in this step without new file writes.
+  // I will just use `useQuery(api.attendance.getByClassAndDate, ...)` inside the component? 
+  // NO, `TeacherPortal` is a pure UI component in this architecture generally (taking props).
+  // Prop: `attendance: AttendanceRecord[]`.
+  // I'll make a quick `getAll` query in backend files first.
+
+  // Okay, looking at `TeacherPortal` props again:
+  // It takes `attendance: AttendanceRecord[]`.
+  // I will assume for this MVP that we fetch *recent* attendance or just add `getAll` helper.
+  // Let's add `getAll` helper to `attendance.ts` and `resources.ts` quickly.
+
 
   // Local state for authentication (still needed locally until auth provider is fully set up, but we use DB users)
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -44,10 +80,17 @@ const App: React.FC = () => {
   const addAvailabilitySlotMutation = useMutation(api.appointments.addSlot);
   const bookSlotMutation = useMutation(api.appointments.bookSlot);
 
+  const deleteClassMutation = useMutation(api.classes.deleteClass);
+  const unlinkChildMutation = useMutation(api.users.unlinkChild);
+
   const createDiscussionMutation = useMutation(api.discussions.create);
   const replyDiscussionMutation = useMutation(api.discussions.reply);
 
-  // Wrappers to match existing prop signatures where possible
+  const saveAttendanceMutation = useMutation(api.attendance.saveAttendance);
+  const uploadResourceMutation = useMutation(api.resources.create);
+  const generateUploadUrlMutation = useMutation(api.resources.generateUploadUrl);
+  const getDownloadUrlMutation = useMutation(api.resources.getDownloadUrl);
+
   // Wrappers to match existing prop signatures where possible
   const users = React.useMemo(() => usersSource.map(u => ({ ...u, id: u._id })), [usersSource]);
   const marks = React.useMemo(() => marksSource.map(m => ({ ...m, id: m._id })), [marksSource]);
@@ -56,6 +99,8 @@ const App: React.FC = () => {
   const appointments = React.useMemo(() => appointmentsSource.map(a => ({ ...a, id: a._id })), [appointmentsSource]);
   const availabilitySlots = React.useMemo(() => availabilitySlotsSource.map(s => ({ ...s, id: s._id })), [availabilitySlotsSource]);
   const discussions = React.useMemo(() => discussionsSource.map(d => ({ ...d, id: d._id, replies: d.replies?.map((r: any) => ({ ...r })) || [] })), [discussionsSource]);
+  const attendance = React.useMemo(() => attendanceSource.map(a => ({ ...a, id: a._id })), [attendanceSource]);
+  const resources = React.useMemo(() => resourcesSource.map(r => ({ ...r, id: r._id })), [resourcesSource]);
 
   // Persistence: Check for logged in user on load
   React.useEffect(() => {
@@ -201,15 +246,30 @@ const App: React.FC = () => {
     addFeedbackMutation(feedbackData);
   };
 
-  const addUser = (userData: Omit<User, 'id'>) => {
-    createUserMutation({
-      name: userData.name,
-      email: userData.email,
-      password: 'password123',
-      role: userData.role,
-      icNumber: userData.icNumber
-    });
+  const saveAttendance = (classId: string, date: string, records: { studentId: string; status: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED' }[]) => {
+    saveAttendanceMutation({ classId, date, records });
   };
+
+  const uploadResource = (classId: string, resource: Omit<Resource, 'id' | 'createdAt' | 'teacherId'>) => {
+    if (!currentUser) return;
+    uploadResourceMutation({ ...resource, teacherId: currentUser.id, description: resource.description || "" });
+  };
+
+  const getUploadUrl = async () => {
+    return await generateUploadUrlMutation();
+  };
+
+  const uploadFile = async (url: string, file: File) => {
+    const result = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+    const { storageId } = await result.json();
+    return storageId;
+  };
+
+  const deleteUserMutation = useMutation(api.users.deleteUser);
 
   const updateClass = (classId: string, updates: Partial<SchoolClass>) => {
     if (updates.timetable) {
@@ -219,7 +279,21 @@ const App: React.FC = () => {
   };
 
   const removeUser = (id: string) => {
-    alert("Delete user not implemented in this demo.");
+    if (window.confirm("Are you sure you want to delete this user?")) {
+      deleteUserMutation({ id: id as Id<"users"> });
+    }
+  };
+
+  const addUser = (userData: Omit<User, 'id'>) => {
+    createUserMutation({
+      name: userData.name,
+      email: userData.email,
+      password: 'password123',
+      role: userData.role,
+      icNumber: userData.icNumber,
+      mustChangePassword: true,
+      studentYear: userData.studentYear
+    });
   };
 
   const linkChild = (ic: string) => {
@@ -255,8 +329,15 @@ const App: React.FC = () => {
   };
 
   const unlinkChild = (parentId: string, childIc: string) => {
-    // Implement if needed for future
-    alert("Unlink not implemented in this demo.");
+    if (window.confirm("Are you sure you want to unlink this child?")) {
+      unlinkChildMutation({ parentId: parentId as Id<"users">, childIc });
+    }
+  };
+
+  const removeClass = (classId: string) => {
+    if (window.confirm("Are you sure you want to delete this class?")) {
+      deleteClassMutation({ id: classId as Id<"classes"> });
+    }
   };
 
   const enrollStudent = (studentIc: string, classId: string) => {
@@ -568,13 +649,13 @@ const App: React.FC = () => {
         md:ml-20 lg:ml-72
       `}>
         <div className="p-4 md:p-6 lg:p-10">
+          <div className="flex justify-end mb-6">
+            {currentUser.id && <NotificationCenter userId={currentUser.id} />}
+          </div>
           {currentUser.role === 'STUDENT' && (
             <StudentDashboard
               student={currentUser}
               marks={marks}
-              feedback={users.filter(u => u.role === 'TEACHER').map(t => ({ // Mocking feedback lookup for now or passing generic
-                id: '1', studentIcNumber: currentUser.icNumber!, teacherId: t.id, comment: '', wellBeing: WellBeingStatus.GOOD, date: ''
-              }))} // This prop seems unused or needs fix in StudentDashboard, but passing existing data structure logic
               // Actual props needed:
               allFeedback={feedbacks} // Passing empty for now, assuming StudentDashboard fetches its own or we update prop
               teachers={users.filter(u => u.role === 'TEACHER')}
@@ -584,7 +665,11 @@ const App: React.FC = () => {
               discussions={discussions}
               onCreateDiscussion={createDiscussionPost}
               onReplyDiscussion={addDiscussionReply}
+              attendance={attendance}
+              resources={resources}
+              onGetDownloadUrl={async (fileId) => { return await getDownloadUrlMutation({ fileId }); }}
             />
+
           )}
 
           {currentUser.role === 'PARENT' && activeChild && (
@@ -599,7 +684,11 @@ const App: React.FC = () => {
               discussions={discussions}
               onCreateDiscussion={createDiscussionPost}
               onReplyDiscussion={addDiscussionReply}
+              attendance={attendance}
+              resources={resources}
+              onGetDownloadUrl={async (fileId) => { return await getDownloadUrlMutation({ fileId }); }}
             />
+
           )}
 
           {currentUser.role === 'TEACHER' && (
@@ -616,6 +705,12 @@ const App: React.FC = () => {
               availabilitySlots={availabilitySlots}
               onAddAvailability={addAvailabilitySlot}
               onUpdateAppointmentStatus={updateAppointmentStatus}
+              attendance={attendance}
+              onSaveAttendance={saveAttendance}
+              resources={resources}
+              onUploadResource={uploadResource}
+              onGetUploadUrl={getUploadUrl}
+              onUploadFile={uploadFile}
             />
           )}
 
@@ -628,6 +723,7 @@ const App: React.FC = () => {
               onEnrollStudent={enrollStudent}
               classes={classes}
               onAddClass={addClass}
+              onRemoveClass={removeClass}
               activeTab={adminActiveTab}
               setActiveTab={setAdminActiveTab}
             />

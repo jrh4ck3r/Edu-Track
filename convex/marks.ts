@@ -17,6 +17,7 @@ export const addMark = mutation({
         maxScore: v.number(),
         assessmentType: v.string(),
         date: v.string(),
+        attachmentId: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         return await ctx.db.insert("marks", args);
