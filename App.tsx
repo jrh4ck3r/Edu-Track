@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Mark, Feedback, WellBeingStatus, SchoolClass, Appointment, AvailabilitySlot, DiscussionPost, DiscussionReply, Resource } from './types';
+import { User, Mark, Feedback, WellBeingStatus, SchoolClass, Appointment, AvailabilitySlot, DiscussionPost, DiscussionReply, Resource, AttendanceRecord } from './types';
 import { mockUsers, mockMarks, mockFeedbacks, mockClasses } from './mockData';
 import { SUBJECTS_LIST } from './constants';
 import StudentDashboard from './components/StudentDashboard';
@@ -246,13 +246,16 @@ const App: React.FC = () => {
     addFeedbackMutation(feedbackData);
   };
 
-  const saveAttendance = (classId: string, date: string, records: { studentId: string; status: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED' }[]) => {
-    saveAttendanceMutation({ classId, date, records });
+  const saveAttendance = (record: Omit<AttendanceRecord, 'id'>) => {
+    saveAttendanceMutation({
+      classId: record.classId,
+      date: record.date,
+      records: [{ studentId: record.studentId, status: record.status }]
+    });
   };
 
-  const uploadResource = (classId: string, resource: Omit<Resource, 'id' | 'createdAt' | 'teacherId'>) => {
-    if (!currentUser) return;
-    uploadResourceMutation({ ...resource, teacherId: currentUser.id, description: resource.description || "" });
+  const uploadResource = (resource: Omit<Resource, 'id'>) => {
+    uploadResourceMutation(resource);
   };
 
   const getUploadUrl = async () => {

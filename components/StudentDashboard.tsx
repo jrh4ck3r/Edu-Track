@@ -588,7 +588,81 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
           </div>
         </div>
       )}
+      {/* Attendance Tab */}
+      {activeTab === 'attendance' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
+          <div className="lg:col-span-1">
+            <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 text-center">
+              <h3 className="text-xl font-black text-slate-800 mb-2">Attendance Rate</h3>
+              <p className="text-slate-500 text-sm mb-8">Overall presence this academic year</p>
 
+              {(() => {
+                const myAttendance = attendance.filter(a => a.studentId === student.id);
+                const total = myAttendance.length;
+                const present = myAttendance.filter(a => a.status === 'PRESENT').length;
+                const late = myAttendance.filter(a => a.status === 'LATE').length; // Late might count as partial or full
+                // Simple percentage: (Present + Late) / Total
+                const percentage = total > 0 ? Math.round(((present + late) / total) * 100) : 100;
+
+                return (
+                  <div className="relative inline-flex items-center justify-center">
+                    <svg className="w-48 h-48 transform -rotate-90">
+                      <circle cx="96" cy="96" r="88" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-slate-100" />
+                      <circle cx="96" cy="96" r="88" stroke="currentColor" strokeWidth="12" fill="transparent" strokeDasharray={2 * Math.PI * 88} strokeDashoffset={2 * Math.PI * 88 * (1 - percentage / 100)} className={`text-indigo-600 transition-all duration-1000 ease-out`} strokeLinecap="round" />
+                    </svg>
+                    <div className="absolute flex flex-col items-center">
+                      <span className="text-5xl font-black text-slate-800">{percentage}%</span>
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Present</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="grid grid-cols-2 gap-4 mt-8">
+                <div className="p-3 bg-emerald-50 rounded-xl">
+                  <p className="text-2xl font-black text-emerald-600">{attendance.filter(a => a.studentId === student.id && a.status === 'PRESENT').length}</p>
+                  <p className="text-[10px] uppercase font-bold text-emerald-800/60 tracking-widest">Present</p>
+                </div>
+                <div className="p-3 bg-rose-50 rounded-xl">
+                  <p className="text-2xl font-black text-rose-600">{attendance.filter(a => a.studentId === student.id && a.status === 'ABSENT').length}</p>
+                  <p className="text-[10px] uppercase font-bold text-rose-800/60 tracking-widest">Absent</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-2">
+            <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
+              <h3 className="text-xl font-black mb-6 text-slate-800 flex items-center gap-2"><Clock className="text-indigo-600" size={24} /> Attendance History</h3>
+              <div className="space-y-2 max-h-[600px] overflow-y-auto custom-scrollbar">
+                {attendance.filter(a => a.studentId === student.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(record => (
+                  <div key={record.id} className="flex justify-between items-center p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-2 h-12 rounded-full ${record.status === 'PRESENT' ? 'bg-emerald-500' :
+                          record.status === 'ABSENT' ? 'bg-rose-500' :
+                            record.status === 'LATE' ? 'bg-amber-500' : 'bg-blue-500'
+                        }`}></div>
+                      <div>
+                        <p className="font-bold text-slate-800">{new Date(record.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                        <p className="text-xs text-slate-400 font-mono">Recorded by Teacher</p>
+                      </div>
+                    </div>
+                    <span className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest ${record.status === 'PRESENT' ? 'bg-emerald-100 text-emerald-600' :
+                        record.status === 'ABSENT' ? 'bg-rose-100 text-rose-600' :
+                          record.status === 'LATE' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'
+                      }`}>
+                      {record.status}
+                    </span>
+                  </div>
+                ))}
+                {attendance.filter(a => a.studentId === student.id).length === 0 && (
+                  <p className="text-center py-12 text-slate-400 italic">No attendance records found.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {activeTab === 'resources' && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
           <h3 className="text-xl font-black mb-6 text-slate-800 flex items-center gap-2">
