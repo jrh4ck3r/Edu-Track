@@ -1,7 +1,10 @@
 
 import React, { useState } from 'react';
 import { User, UserRole, SchoolClass } from '../types';
-import { UserPlus, ShieldAlert, Trash2, Edit3, Search, LayoutGrid, Users as UsersIcon } from 'lucide-react';
+import { UserPlus, ShieldAlert, Trash2, Edit3, Search, LayoutGrid, Users as UsersIcon, BarChart3, TrendingUp, Activity } from 'lucide-react';
+import { useQuery } from 'convex/react';
+import { api } from '../convex/_generated/api';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 interface AdminPortalProps {
   users: User[];
@@ -9,14 +12,15 @@ interface AdminPortalProps {
   onRemoveUser: (id: string) => void;
   classes: SchoolClass[];
   onAddClass: (cls: Omit<SchoolClass, 'id' | 'timetable'>) => void; // Updated Prop
-  activeTab: 'users' | 'classes';
-  setActiveTab: (tab: 'users' | 'classes') => void;
+  activeTab: 'analytics' | 'users' | 'classes';
+  setActiveTab: (tab: 'analytics' | 'users' | 'classes') => void;
   onUnlinkChild: (parentId: string, childIc: string) => void;
   onEnrollStudent: (studentIc: string, classId: string) => void;
   onRemoveClass: (classId: string) => void; // New Prop
+  onRemoveFromClass: (studentIc: string) => void;
 }
 
-const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUser, onUnlinkChild, onEnrollStudent, classes, onAddClass, onRemoveClass, activeTab, setActiveTab }) => {
+const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUser, onUnlinkChild, onEnrollStudent, classes, onAddClass, onRemoveClass, onRemoveFromClass, activeTab, setActiveTab }) => {
   // const [activeTab, setActiveTab] = useState<'users' | 'classes'>('users'); // Removed internal state
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -35,6 +39,8 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
   // New state for assigning class from User Directory
   const [assignClassStudentIc, setAssignClassStudentIc] = useState<string | null>(null);
   const [assignClassId, setAssignClassId] = useState('');
+
+  const systemStats = useQuery((api as any).analytics?.getSystemStats);
 
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +91,12 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
         </div>
         <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
           <button
+            onClick={() => setActiveTab('analytics')}
+            className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'analytics' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Analytics
+          </button>
+          <button
             onClick={() => setActiveTab('users')}
             className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'users' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}
           >
@@ -99,7 +111,106 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
         </div>
       </div>
 
-      {activeTab === 'users' ? (
+      {activeTab === 'analytics' && systemStats ? (
+        <div className="space-y-6 animate-in fade-in duration-500">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Total Users</p>
+                <p className="text-3xl font-black text-slate-800">{systemStats.totalUsers}</p>
+              </div>
+              <div className="p-4 bg-indigo-50 text-indigo-600 rounded-2xl">
+                <UsersIcon size={24} />
+              </div>
+            </div>
+            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Active Classes</p>
+                <p className="text-3xl font-black text-slate-800">{systemStats.totalClasses}</p>
+              </div>
+              <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl">
+                <LayoutGrid size={24} />
+              </div>
+            </div>
+            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Platform Msgs</p>
+                <p className="text-3xl font-black text-slate-800">{systemStats.totalMessages}</p>
+              </div>
+              <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl">
+                <Activity size={24} />
+              </div>
+            </div>
+            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Overall Attendance</p>
+                <p className="text-3xl font-black text-slate-800">{systemStats.overallAttendancePercentage}%</p>
+              </div>
+              <div className="p-4 bg-rose-50 text-rose-600 rounded-2xl">
+                <TrendingUp size={24} />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+              <h3 className="text-lg font-black text-slate-800 mb-6">User Demographics</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: 'Students', value: systemStats.studentCount },
+                        { name: 'Teachers', value: systemStats.teacherCount },
+                        { name: 'Parents', value: systemStats.parentCount }
+                      ]}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      <Cell fill="#4f46e5" />
+                      <Cell fill="#10b981" />
+                      <Cell fill="#f43f5e" />
+                    </Pie>
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-center gap-6 mt-4">
+                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-indigo-600"></div><span className="text-sm font-bold text-slate-600">Students ({systemStats.studentCount})</span></div>
+                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-emerald-500"></div><span className="text-sm font-bold text-slate-600">Teachers ({systemStats.teacherCount})</span></div>
+                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-rose-500"></div><span className="text-sm font-bold text-slate-600">Parents ({systemStats.parentCount})</span></div>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+              <h3 className="text-lg font-black text-slate-800 mb-6">Engagement Metrics</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={[
+                    { name: 'Messages', count: systemStats.totalMessages },
+                    { name: 'Forum Posts', count: systemStats.totalDiscussions },
+                    { name: 'Attendance Logs', count: systemStats.totalAttendanceRecords }
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 700 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 700 }} />
+                    <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <Bar dataKey="count" fill="#4f46e5" radius={[6, 6, 0, 0]} barSize={40} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : activeTab === 'analytics' && !systemStats ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="w-8 h-8 rounded-full border-4 border-slate-200 border-t-indigo-600 animate-spin"></div>
+        </div>
+      ) : activeTab === 'users' ? (
         <>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             <div className="relative w-full md:max-w-md">
@@ -259,6 +370,15 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ users, onAddUser, onRemoveUse
                               title="Assign Class"
                             >
                               <UserPlus size={18} />
+                            </button>
+                          )}
+                          {user.role === 'STUDENT' && user.assignedClassId && (
+                            <button
+                              onClick={() => user.icNumber && onRemoveFromClass(user.icNumber)}
+                              className="p-3 hover:bg-orange-100 rounded-xl text-orange-600 transition-colors"
+                              title="Remove from Class"
+                            >
+                              <Trash2 size={18} />
                             </button>
                           )}
                           <button className="p-3 hover:bg-slate-200 rounded-xl text-slate-600 transition-colors">

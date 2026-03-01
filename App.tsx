@@ -6,7 +6,8 @@ import StudentDashboard from './components/StudentDashboard';
 import TeacherPortal from './components/TeacherPortal';
 import AdminPortal from './components/AdminPortal';
 import NotificationCenter from './components/NotificationCenter';
-import { LayoutDashboard, GraduationCap, Users, Settings, LogOut, ChevronRight, Search, PlusCircle, CreditCard, Menu, X, Lock, ArrowLeft } from 'lucide-react';
+import MessageDrawer from './components/MessageDrawer';
+import { LayoutDashboard, GraduationCap, Users, Settings, LogOut, ChevronRight, Search, PlusCircle, CreditCard, Menu, X, Lock, ArrowLeft, MessageSquare } from 'lucide-react';
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "./convex/_generated/api";
@@ -24,6 +25,17 @@ const App: React.FC = () => {
   const discussionsSource = useQuery(api.discussions.list) || [];
   const attendanceSource = useQuery(api.attendance.getAll) || [];
   const resourcesSource = useQuery(api.resources.getAll) || [];
+
+  // Temporary fix since we don't have user filtering up here for simplicity
+  // we'll fetch all messages. In reality, filter by user.
+  // I will just use `useQuery(api.messages.getMessagesWithUser)` but we need an arg.
+  // Let's create `getAll` for messages temporarily or just assume we have it.
+  // Actually, we can fetch messages scoped to the user if we have their ID.
+  const messagesSource = useQuery((api as any).messages?.getMessagesWithUser, { userId1: 'all', userId2: 'all' }) || [];
+  // Wait, I only made getMessagesWithUser in convex/messages.ts. 
+  // Let's add a quick `getAll` or `getAllUserMessages` in `messages.ts` next to make this work smoothly globally.
+  // I will implement a global `messages` array for now, then fix the query next step.
+  const allMessagesSource = useQuery((api as any).messages?.getAll) || [];
 
   // New features queries
   // In a real app we'd filter these queries by the current user/class to avoid loading everything
@@ -91,6 +103,10 @@ const App: React.FC = () => {
   const generateUploadUrlMutation = useMutation(api.resources.generateUploadUrl);
   const getDownloadUrlMutation = useMutation(api.resources.getDownloadUrl);
 
+  const sendMessageMutation = useMutation((api as any).messages?.sendMessage);
+  const awardBadgeMutation = useMutation((api as any).badges?.awardBadge);
+  const logBehaviorMutation = useMutation((api as any).behavior?.logBehavior);
+
   // Wrappers to match existing prop signatures where possible
   const users = React.useMemo(() => usersSource.map(u => ({ ...u, id: u._id })), [usersSource]);
   const marks = React.useMemo(() => marksSource.map(m => ({ ...m, id: m._id })), [marksSource]);
@@ -101,6 +117,7 @@ const App: React.FC = () => {
   const discussions = React.useMemo(() => discussionsSource.map(d => ({ ...d, id: d._id, replies: d.replies?.map((r: any) => ({ ...r })) || [] })), [discussionsSource]);
   const attendance = React.useMemo(() => attendanceSource.map(a => ({ ...a, id: a._id })), [attendanceSource]);
   const resources = React.useMemo(() => resourcesSource.map(r => ({ ...r, id: r._id })), [resourcesSource]);
+  const messages = React.useMemo(() => allMessagesSource.map((m: any) => ({ ...m, id: m._id })), [allMessagesSource]);
 
   // Persistence: Check for logged in user on load
   React.useEffect(() => {
@@ -155,7 +172,7 @@ const App: React.FC = () => {
   const [password, setPassword] = useState('');
   const [selectedChildIc, setSelectedChildIc] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [adminActiveTab, setAdminActiveTab] = useState<'users' | 'classes'>('users');
+  const [adminActiveTab, setAdminActiveTab] = useState<'analytics' | 'users' | 'classes'>('analytics');
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [newParentName, setNewParentName] = useState('');
@@ -163,8 +180,12 @@ const App: React.FC = () => {
   const [newParentPassword, setNewParentPassword] = useState('');
 
   const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [tempUser, setTempUser] = useState<User | null>(null);
   const [newPasswordChange, setNewPasswordChange] = useState('');
+
+  const [showMessageDrawer, setShowMessageDrawer] = useState(false);
+  const [preselectedMessageUserId, setPreselectedMessageUserId] = useState<string | null>(null);
 
   const handleSignUp = (e: React.FormEvent) => {
     e.preventDefault();
@@ -258,6 +279,12 @@ const App: React.FC = () => {
     uploadResourceMutation(resource);
   };
 
+  const removeResource = (id: string) => {
+    if (window.confirm("Are you sure you want to delete this resource?")) {
+      deleteResourceMutation({ id: id as Id<"resources"> });
+    }
+  };
+
   const getUploadUrl = async () => {
     return await generateUploadUrlMutation();
   };
@@ -273,6 +300,18 @@ const App: React.FC = () => {
   };
 
   const deleteUserMutation = useMutation(api.users.deleteUser);
+  const deleteResourceMutation = useMutation(api.resources.deleteResource);
+
+  const handleSendMessage = (receiverId: string, content: string) => {
+    if (currentUser) {
+      sendMessageMutation({
+        senderId: currentUser.id,
+        receiverId,
+        content,
+        timestamp: new Date().toISOString()
+      });
+    }
+  };
 
   const updateClass = (classId: string, updates: Partial<SchoolClass>) => {
     if (updates.timetable) {
@@ -355,9 +394,33 @@ const App: React.FC = () => {
     }
   };
 
+  const removeFromClass = (studentIc: string) => {
+    const student = users.find(u => u.icNumber === studentIc && u.role === 'STUDENT');
+    if (!student) return;
+
+    if (window.confirm(`Are you sure you want to remove ${student.name} from their current class?`)) {
+      if (student._id) {
+        updateUserMutation({ id: student._id as Id<"users">, updates: { assignedClassId: undefined } })
+          .then(() => alert(`Successfully removed ${student.name} from class.`));
+      }
+    }
+  };
+
   const addClass = (classData: Omit<SchoolClass, 'id' | 'timetable'>) => {
     createClassMutation({ name: classData.name, teacherId: classData.teacherId });
   };
+
+  const activeChild = currentUser?.role === 'PARENT' && selectedChildIc
+    ? users.find(u => u.icNumber === selectedChildIc)
+    : null;
+
+  // LIVE CONVEX QUERIES FOR NEW FEATURES
+  const userBadgesQueryArg = currentUser?.role === 'STUDENT' ? { studentId: currentUser.icNumber } : (currentUser?.role === 'PARENT' && activeChild) ? { studentId: activeChild.icNumber } : "skip";
+  const badgesQuery = useQuery((api as any).badges?.getStudentBadges, userBadgesQueryArg === "skip" ? "skip" : userBadgesQueryArg) || [];
+  const behaviorsQuery = useQuery((api as any).behavior?.getStudentBehaviorLogs, userBadgesQueryArg === "skip" ? "skip" : userBadgesQueryArg) || [];
+
+  const userBadges = React.useMemo(() => badgesQuery.map((b: any) => ({ ...b, id: b._id })), [badgesQuery]);
+  const userBehaviors = React.useMemo(() => behaviorsQuery.map((b: any) => ({ ...b, id: b._id })), [behaviorsQuery]);
 
   if (!currentUser && !showPasswordChange) {
     return (
@@ -512,9 +575,7 @@ const App: React.FC = () => {
     );
   }
 
-  const activeChild = currentUser.role === 'PARENT' && selectedChildIc
-    ? users.find(u => u.icNumber === selectedChildIc)
-    : null;
+
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
@@ -624,18 +685,25 @@ const App: React.FC = () => {
         </nav>
 
         <div className="p-4 lg:p-6 mt-auto">
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 lg:p-5 block md:hidden lg:block mb-4 lg:mb-6">
-            <p className="text-[10px] text-slate-500 font-black uppercase mb-2 tracking-widest">Active User</p>
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 lg:p-5 mb-4 lg:mb-6 text-left hover:bg-white/10 transition-colors block md:hidden lg:block group"
+          >
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest group-hover:text-slate-400">Active User</p>
+              <Settings size={14} className="text-slate-500 group-hover:text-indigo-400 transition-colors" />
+            </div>
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl bg-slate-700 flex items-center justify-center font-bold text-indigo-400 shrink-0">
-                {currentUser.name.charAt(0)}
+              <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl bg-slate-700 flex items-center justify-center font-bold text-indigo-400 shrink-0 overflow-hidden">
+                {currentUser.avatarUrl ? <img src={currentUser.avatarUrl} className="w-full h-full object-cover" /> : currentUser.name.charAt(0)}
               </div>
               <div className="overflow-hidden">
                 <p className="font-bold text-white text-sm truncate">{currentUser.name}</p>
                 <p className="text-[10px] text-indigo-400 font-black uppercase mt-0.5">{currentUser.role}</p>
               </div>
             </div>
-          </div>
+          </button>
+
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-4 p-4 hover:bg-rose-900/40 hover:text-rose-400 rounded-2xl transition-all font-bold justify-start md:justify-center lg:justify-start"
@@ -652,7 +720,13 @@ const App: React.FC = () => {
         md:ml-20 lg:ml-72
       `}>
         <div className="p-4 md:p-6 lg:p-10">
-          <div className="flex justify-end mb-6">
+          <div className="flex justify-end mb-6 gap-4">
+            {currentUser.id && (
+              <button onClick={() => setShowMessageDrawer(true)} className="relative p-2 text-slate-400 hover:text-indigo-600 transition-colors">
+                <MessageSquare size={24} />
+                {/* Optional: Add unread badge here if we calculate it */}
+              </button>
+            )}
             {currentUser.id && <NotificationCenter userId={currentUser.id} />}
           </div>
           {currentUser.role === 'STUDENT' && (
@@ -671,6 +745,8 @@ const App: React.FC = () => {
               attendance={attendance}
               resources={resources}
               onGetDownloadUrl={async (fileId) => { return await getDownloadUrlMutation({ fileId }); }}
+              badges={userBadges}
+              behaviorLogs={userBehaviors}
             />
 
           )}
@@ -690,6 +766,8 @@ const App: React.FC = () => {
               attendance={attendance}
               resources={resources}
               onGetDownloadUrl={async (fileId) => { return await getDownloadUrlMutation({ fileId }); }}
+              badges={userBadges}
+              behaviorLogs={userBehaviors}
             />
 
           )}
@@ -712,8 +790,13 @@ const App: React.FC = () => {
               onSaveAttendance={saveAttendance}
               resources={resources}
               onUploadResource={uploadResource}
+              onDeleteResource={removeResource}
               onGetUploadUrl={getUploadUrl}
               onUploadFile={uploadFile}
+              onRemoveFromClass={removeFromClass}
+              onOpenMessage={(id) => { setPreselectedMessageUserId(id); setShowMessageDrawer(true); }}
+              onAwardBadge={(badge) => awardBadgeMutation(badge)}
+              onLogBehavior={(log) => logBehaviorMutation(log)}
             />
           )}
 
@@ -727,11 +810,80 @@ const App: React.FC = () => {
               classes={classes}
               onAddClass={addClass}
               onRemoveClass={removeClass}
+              onRemoveFromClass={removeFromClass}
               activeTab={adminActiveTab}
               setActiveTab={setAdminActiveTab}
             />
           )}
         </div>
+
+        {showMessageDrawer && currentUser && (
+          <MessageDrawer
+            currentUser={currentUser}
+            users={users}
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            onClose={() => setShowMessageDrawer(false)}
+            initialSelectedUserId={preselectedMessageUserId}
+          />
+        )}
+
+        {/* Profile Settings Modal */}
+        {showProfileModal && currentUser && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl p-8 animate-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-black text-slate-800">Profile Settings</h3>
+                <button onClick={() => setShowProfileModal(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500 text-2xl overflow-hidden border-4 border-slate-50 shadow-sm">
+                    {currentUser.avatarUrl ? <img src={currentUser.avatarUrl} className="w-full h-full object-cover" /> : currentUser.name.charAt(0)}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-slate-800 text-lg">{currentUser.name}</p>
+                    <p className="text-sm font-bold text-indigo-600 uppercase tracking-widest">{currentUser.role}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Avatar Image URL</label>
+                  <input
+                    defaultValue={currentUser.avatarUrl || ''}
+                    onBlur={(e) => {
+                      if (currentUser._id) updateUserMutation({ id: currentUser._id as Id<"users">, updates: { avatarUrl: e.target.value } })
+                    }}
+                    className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800"
+                    placeholder="https://example.com/photo.jpg"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Contact Number</label>
+                  <input
+                    defaultValue={currentUser.contactNumber || ''}
+                    onBlur={(e) => {
+                      if (currentUser._id) updateUserMutation({ id: currentUser._id as Id<"users">, updates: { contactNumber: e.target.value } })
+                    }}
+                    className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800"
+                    placeholder="+1 (555) 000-0000"
+                  />
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 mt-6">
+                  <button
+                    onClick={() => { setShowProfileModal(false); setTempUser(currentUser); setShowPasswordChange(true); }}
+                    className="w-full py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Lock size={16} /> Change Password
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

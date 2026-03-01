@@ -42,3 +42,10 @@ export const getDownloadUrl = mutation({
         return await ctx.storage.getUrl(args.fileId);
     }
 });
+
+export const deleteResource = mutation({
+    args: { id: v.id("resources") },
+    handler: async (ctx, args) => {
+        await ctx.db.delete(args.id);
+    }
+});

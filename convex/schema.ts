@@ -12,6 +12,8 @@ export default defineSchema({
         assignedClassId: v.optional(v.string()),
         mustChangePassword: v.optional(v.boolean()),
         studentYear: v.optional(v.string()), // Standard 1-6
+        contactNumber: v.optional(v.string()),
+        avatarUrl: v.optional(v.string()),
     }),
     classes: defineTable({
         name: v.string(),
@@ -92,5 +94,26 @@ export default defineSchema({
             content: v.string(),
             timestamp: v.string(),
         })),
+    }),
+    messages: defineTable({
+        senderId: v.string(),
+        receiverId: v.string(),
+        content: v.string(),
+        timestamp: v.string(),
+        isRead: v.boolean(),
+    }),
+    badges: defineTable({
+        studentId: v.string(),
+        teacherId: v.string(),
+        title: v.string(),
+        icon: v.string(),
+        dateAwarded: v.string(),
+    }),
+    behaviorLogs: defineTable({
+        studentId: v.string(),
+        teacherId: v.string(),
+        type: v.union(v.literal('POSITIVE'), v.literal('WARNING')),
+        description: v.string(),
+        date: v.string(),
     }),
 });

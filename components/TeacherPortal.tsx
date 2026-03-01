@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { User, Mark, Feedback, WellBeingStatus, SchoolClass, Appointment, AvailabilitySlot, AttendanceRecord, Resource, AttendanceStatus } from '../types';
+import { User, Mark, Feedback, WellBeingStatus, SchoolClass, Appointment, AvailabilitySlot, AttendanceRecord, Resource, AttendanceStatus, Badge, BehaviorLog, BehaviorType } from '../types';
 import { SUBJECTS_LIST, ASSESSMENT_TYPES } from '../constants';
-import { Plus, Save, User as UserIcon, BookOpen, ClipboardCheck, History, Search, LayoutGrid, Calendar, Clock, Check, X, FileText, Download, Upload, Trash2, Filter } from 'lucide-react';
+import { Plus, Save, User as UserIcon, BookOpen, ClipboardCheck, History, Search, LayoutGrid, Calendar, Clock, Check, X, FileText, Download, Upload, Trash2, Filter, Award, AlertCircle } from 'lucide-react';
 
 interface TeacherPortalProps {
   teacher: User;
@@ -22,13 +22,19 @@ interface TeacherPortalProps {
   onUploadResource: (resource: Omit<Resource, 'id'>) => void;
   onGetUploadUrl: () => Promise<string>;
   onUploadFile: (url: string, file: File) => Promise<string | null>;
+  onDeleteResource: (id: string) => void;
+  onRemoveFromClass: (studentIc: string) => void;
+  onOpenMessage?: (userId: string) => void;
+  onAwardBadge?: (badge: Omit<Badge, 'id'>) => void;
+  onLogBehavior?: (log: Omit<BehaviorLog, 'id'>) => void;
 }
 
 const TeacherPortal: React.FC<TeacherPortalProps> = ({
   teacher, students, onAddMark, onAddFeedback, marks, classes,
   onEnrollStudent, onUpdateClass, appointments, availabilitySlots,
   onAddAvailability, onUpdateAppointmentStatus,
-  attendance, onSaveAttendance, resources, onUploadResource, onGetUploadUrl, onUploadFile
+  attendance, onSaveAttendance, resources, onUploadResource, onGetUploadUrl, onUploadFile,
+  onDeleteResource, onRemoveFromClass, onOpenMessage, onAwardBadge, onLogBehavior
 }) => {
   const [selectedStudentIc, setSelectedStudentIc] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
@@ -37,11 +43,21 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
   const [comment, setComment] = useState('');
   const [wellBeing, setWellBeing] = useState(WellBeingStatus.GOOD);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'classrooms' | 'appointments'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'classrooms' | 'appointments'>('classrooms');
 
   // Class Management State
   const [activeClassId, setActiveClassId] = useState<string | null>(null);
   const [classTab, setClassTab] = useState<'students' | 'attendance' | 'resources' | 'timetable'>('students');
+  const [gradingStudentIc, setGradingStudentIc] = useState<string | null>(null);
+  const [observingStudentIc, setObservingStudentIc] = useState<string | null>(null);
+  const [badgeStudentIc, setBadgeStudentIc] = useState<string | null>(null);
+  const [behaviorStudentIc, setBehaviorStudentIc] = useState<string | null>(null);
+
+  const [badgeTitle, setBadgeTitle] = useState('Math Wizard');
+  const [badgeIcon, setBadgeIcon] = useState('🌟');
+
+  const [behaviorType, setBehaviorType] = useState<BehaviorType>('POSITIVE');
+  const [behaviorDesc, setBehaviorDesc] = useState('');
 
   // Attendance State
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
@@ -149,10 +165,10 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
 
   const handleSubmitMark = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudentIc || !selectedSubjectId || !score) return;
+    if (!gradingStudentIc || !selectedSubjectId || !score) return;
 
     onAddMark({
-      studentIcNumber: selectedStudentIc,
+      studentIcNumber: gradingStudentIc,
       subjectId: selectedSubjectId,
       score: Number(score),
       maxScore: 100,
@@ -160,22 +176,55 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
       date: new Date().toISOString().split('T')[0],
     });
     setScore('');
+    setGradingStudentIc(null);
     alert('Mark added successfully!');
   };
 
-  const handleSubmitFeedback = (e: React.FormEvent) => {
+  const handleSubmitObservation = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudentIc || !comment) return;
-
+    if (!observingStudentIc || !comment) return;
     onAddFeedback({
-      studentIcNumber: selectedStudentIc,
+      studentIcNumber: observingStudentIc,
       teacherId: teacher.id,
       comment,
       wellBeing,
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toISOString()
     });
+    setObservingStudentIc(null);
     setComment('');
-    alert('Feedback submitted successfully!');
+  };
+
+  const handleAwardBadge = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!badgeStudentIc || !badgeTitle || !onAwardBadge) return;
+    const sId = students.find(s => s.icNumber === badgeStudentIc)?.id;
+    if (sId) {
+      onAwardBadge({
+        studentId: sId,
+        teacherId: teacher.id,
+        title: badgeTitle,
+        icon: badgeIcon,
+        dateAwarded: new Date().toISOString()
+      });
+    }
+    setBadgeStudentIc(null);
+  };
+
+  const handleLogBehavior = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!behaviorStudentIc || !behaviorDesc || !onLogBehavior) return;
+    const sId = students.find(s => s.icNumber === behaviorStudentIc)?.id;
+    if (sId) {
+      onLogBehavior({
+        studentId: sId,
+        teacherId: teacher.id,
+        type: behaviorType,
+        description: behaviorDesc,
+        date: new Date().toISOString()
+      });
+    }
+    setBehaviorStudentIc(null);
+    setBehaviorDesc('');
   };
 
   const filteredStudents = students.filter(s =>
@@ -195,133 +244,10 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
           <p className="text-slate-500 font-medium">Manage academic performance and student well-being.</p>
         </div>
         <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
-          <button onClick={() => setActiveTab('dashboard')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>Dashboard</button>
           <button onClick={() => setActiveTab('classrooms')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'classrooms' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>My Classrooms</button>
           <button onClick={() => setActiveTab('appointments')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'appointments' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>Appointments</button>
         </div>
       </div>
-
-      {activeTab === 'dashboard' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          <div className="lg:col-span-1">
-            <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-xl border border-slate-100 lg:sticky lg:top-10">
-              <h3 className="text-xl font-black mb-6 flex items-center gap-2"><UserIcon className="text-indigo-600" size={24} /> Students</h3>
-              <div className="relative mb-6">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                <input type="text" placeholder="Search by IC or Name..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
-              </div>
-              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                {filteredStudents.length > 0 ? filteredStudents.map(s => (
-                  <button key={s.id} onClick={() => setSelectedStudentIc(s.icNumber || '')} className={`w-full text-left p-4 rounded-2xl transition-all border-2 ${selectedStudentIc === s.icNumber ? 'bg-indigo-600 border-indigo-600 text-white shadow-xl shadow-indigo-100' : 'bg-white border-transparent hover:border-slate-100 hover:bg-slate-50 text-slate-700 shadow-sm'}`}>
-                    <p className="font-black text-sm">{s.name}</p>
-                    <p className={`text-[10px] font-mono mt-1 ${selectedStudentIc === s.icNumber ? 'text-indigo-200' : 'text-slate-400'}`}>IC: {s.icNumber}</p>
-                  </button>
-                )) : <p className="text-center py-10 text-slate-400 text-sm italic">No students found.</p>}
-              </div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-2 space-y-8">
-            {!selectedStudentIc ? (
-              <div className="bg-slate-100 border-4 border-dashed border-slate-200 rounded-[3rem] h-[600px] flex flex-col items-center justify-center p-12 text-center">
-                <div className="w-20 h-20 bg-slate-200 rounded-full flex items-center justify-center mb-6"><Search size={40} className="text-slate-400" /></div>
-                <h3 className="text-2xl font-black text-slate-400 mb-2">Identify a Student</h3>
-                <p className="text-slate-400 max-w-xs font-medium">Please select a student from the directory to start managing their academic profile.</p>
-              </div>
-            ) : (
-              <>
-                <div className="bg-indigo-600 p-8 rounded-[2.5rem] text-white shadow-2xl shadow-indigo-100 flex justify-between items-center animate-in fade-in slide-in-from-top-4 duration-500">
-                  <div>
-                    <h2 className="text-3xl font-black tracking-tight">{selectedStudent?.name}</h2>
-                    <p className="text-indigo-200 font-bold uppercase tracking-widest text-xs mt-1">IC: {selectedStudentIc}</p>
-                  </div>
-                  <div className="px-5 py-2 bg-white/10 rounded-2xl border border-white/10">
-                    <p className="text-[10px] font-black uppercase tracking-widest">Enrolled Class</p>
-                    <p className="font-bold">{classes.find(c => c.id === selectedStudent?.assignedClassId)?.name || 'General'}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-100">
-                    <h3 className="text-xl font-black mb-6 flex items-center gap-2"><BookOpen className="text-indigo-600" size={24} /> Input Grade</h3>
-                    <form onSubmit={handleSubmitMark} className="space-y-5">
-                      <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Subject</label>
-                        <select value={selectedSubjectId} onChange={(e) => setSelectedSubjectId(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
-                          <option value="">Select Subject</option>
-                          {SUBJECTS_LIST.map(sub => <option key={sub.id} value={sub.id}>{sub.name}</option>)}
-                        </select>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Assessment</label>
-                          <select value={assessmentType} onChange={(e) => setAssessmentType(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
-                            {ASSESSMENT_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Score</label>
-                          <input type="number" max="100" min="0" value={score} onChange={(e) => setScore(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0-100" />
-                        </div>
-                      </div>
-                      <button type="submit" className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 mt-4"><Save size={18} /> Save Marks</button>
-                    </form>
-                  </div>
-
-                  <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-100">
-                    <h3 className="text-xl font-black mb-6 flex items-center gap-2"><ClipboardCheck className="text-emerald-600" size={24} /> Observations</h3>
-                    <form onSubmit={handleSubmitFeedback} className="space-y-5">
-                      <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Student Well-being</label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {Object.values(WellBeingStatus).map(status => (
-                            <button key={status} type="button" onClick={() => setWellBeing(status)} className={`py-2 px-1 rounded-lg border text-[10px] font-black uppercase transition-all ${wellBeing === status ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`}>{status.split(' ')[0]}</button>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Qualitative Feedback</label>
-                        <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Insights on progress..." />
-                      </div>
-                      <button type="submit" className="w-full bg-slate-900 text-white py-4 rounded-xl font-black shadow-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2"><Plus size={18} /> Update Report</button>
-                    </form>
-                  </div>
-                </div>
-
-                <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
-                  <div className="flex items-center justify-between mb-8">
-                    <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3"><History className="text-slate-400" size={28} /> Academic Timeline</h3>
-                    <div className="bg-slate-50 px-4 py-2 rounded-xl text-xs font-bold text-slate-500 border border-slate-100">{studentMarks.length} Total Records</div>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-slate-50 text-left">
-                          <th className="pb-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Subject</th>
-                          <th className="pb-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Assessment</th>
-                          <th className="pb-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
-                          <th className="pb-5 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Achievement</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50">
-                        {studentMarks.map(m => (
-                          <tr key={m.id} className="group">
-                            <td className="py-5"><p className="font-black text-slate-700">{SUBJECTS_LIST.find(s => s.id === m.subjectId)?.name}</p></td>
-                            <td className="py-5"><span className="text-sm font-medium text-slate-400">{m.assessmentType}</span></td>
-                            <td className="py-5 text-sm font-bold text-slate-400">{m.date}</td>
-                            <td className="py-5 text-right"><span className="text-lg font-black text-indigo-600">{m.score}%</span></td>
-                          </tr>
-                        ))}
-                        {studentMarks.length === 0 && <tr><td colSpan={4} className="py-12 text-center text-slate-400 italic">No academic history recorded.</td></tr>}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
 
       {activeTab === 'classrooms' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -378,15 +304,173 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
                     <button onClick={() => setShowEnrollModal(true)} className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2"><Plus size={16} /> Enroll Student</button>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {students.filter(s => s.assignedClassId === activeClassId).map(s => (
-                      <div key={s.id} className="p-4 bg-slate-50 rounded-2xl flex items-center gap-4">
-                        <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold">{s.name.charAt(0)}</div>
-                        <div>
-                          <p className="font-bold text-slate-800">{s.name}</p>
-                          <p className="text-xs font-mono text-slate-400">{s.icNumber}</p>
+                    {students.filter(s => s.assignedClassId === activeClassId).map(s => {
+                      const isGrading = gradingStudentIc === s.icNumber;
+                      const isObserving = observingStudentIc === s.icNumber;
+                      const isBadging = badgeStudentIc === s.icNumber;
+                      const isBehaving = behaviorStudentIc === s.icNumber;
+                      const isActivePanel = isGrading || isObserving || isBadging || isBehaving;
+
+                      return (
+                        <div key={s.id} className={`p-4 bg-slate-50 rounded-2xl flex flex-col gap-4 border-2 transition-all ${isActivePanel ? 'col-span-full border-indigo-200 bg-white shadow-xl' : 'border-transparent'}`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold">{s.name.charAt(0)}</div>
+                              <div>
+                                <p className="font-bold text-slate-800">{s.name}</p>
+                                <p className="text-xs font-mono text-slate-400">{s.icNumber}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button
+                                onClick={() => { setGradingStudentIc(isGrading ? null : s.icNumber || null); setObservingStudentIc(null); setBadgeStudentIc(null); setBehaviorStudentIc(null); }}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${isGrading ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}
+                              >
+                                Add Grade
+                              </button>
+                              <button
+                                onClick={() => { setObservingStudentIc(isObserving ? null : s.icNumber || null); setGradingStudentIc(null); setBadgeStudentIc(null); setBehaviorStudentIc(null); }}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${isObserving ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}
+                              >
+                                Add Note
+                              </button>
+                              <button
+                                onClick={() => { setBadgeStudentIc(isBadging ? null : s.icNumber || null); setGradingStudentIc(null); setObservingStudentIc(null); setBehaviorStudentIc(null); }}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${isBadging ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`}
+                                title="Award Badge"
+                              >
+                                <Award size={14} className="inline mr-1" /> Badge
+                              </button>
+                              <button
+                                onClick={() => { setBehaviorStudentIc(isBehaving ? null : s.icNumber || null); setGradingStudentIc(null); setObservingStudentIc(null); setBadgeStudentIc(null); }}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${isBehaving ? 'bg-slate-800 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}
+                                title="Log Behavior"
+                              >
+                                <AlertCircle size={14} className="inline mr-1" /> Log
+                              </button>
+                              {onOpenMessage && (
+                                <button
+                                  onClick={() => onOpenMessage(s.id)}
+                                  className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-lg hover:bg-blue-100 transition-colors"
+                                  title="Message Student/Parent"
+                                >
+                                  Message
+                                </button>
+                              )}
+                              <button
+                                onClick={() => s.icNumber && onRemoveFromClass(s.icNumber)}
+                                className="px-3 py-1.5 text-xs font-bold text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
+                                title="Remove from class"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Inline Grading Form */}
+                          {isGrading && (
+                            <form onSubmit={handleSubmitMark} className="pt-4 border-t border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                <div>
+                                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Subject</label>
+                                  <select value={selectedSubjectId} onChange={(e) => setSelectedSubjectId(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                                    <option value="">Select Subject</option>
+                                    {SUBJECTS_LIST.map(sub => <option key={sub.id} value={sub.id}>{sub.name}</option>)}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Assessment</label>
+                                  <select value={assessmentType} onChange={(e) => setAssessmentType(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                                    {ASSESSMENT_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Score</label>
+                                  <input type="number" max="100" min="0" value={score} onChange={(e) => setScore(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="0-100" />
+                                </div>
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <button type="button" onClick={() => setGradingStudentIc(null)} className="px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-xl">Cancel</button>
+                                <button type="submit" className="px-6 py-2 bg-indigo-600 text-white text-sm font-bold rounded-xl shadow-md hover:bg-indigo-700 transition-all flex items-center gap-2"><Save size={16} /> Save</button>
+                              </div>
+                            </form>
+                          )}
+
+                          {/* Inline Observation Form */}
+                          {isObserving && (
+                            <form onSubmit={handleSubmitObservation} className="pt-4 border-t border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300">
+                              <div className="mb-4">
+                                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Student Well-being</label>
+                                <div className="flex gap-4">
+                                  {Object.values(WellBeingStatus).map(status => (
+                                    <label key={status} className="flex items-center gap-2 cursor-pointer">
+                                      <input type="radio" name={`wellbeing-${s.id}`} value={status} checked={wellBeing === status} onChange={(e) => setWellBeing(e.target.value as WellBeingStatus)} className="text-indigo-600 focus:ring-indigo-500" />
+                                      <span className="text-sm font-bold text-slate-700">{status}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="mb-4">
+                                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Qualitative Feedback</label>
+                                <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={2} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Insights on progress..." />
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <button type="button" onClick={() => setObservingStudentIc(null)} className="px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-xl">Cancel</button>
+                                <button type="submit" className="px-6 py-2 bg-indigo-600 text-white text-sm font-bold rounded-xl shadow-md hover:bg-indigo-700 transition-all flex items-center gap-2"><Save size={16} /> Save</button>
+                              </div>
+                            </form>
+                          )}
+
+                          {/* Inline Badge Form */}
+                          {isBadging && (
+                            <form onSubmit={handleAwardBadge} className="pt-4 border-t border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Badge Title</label>
+                                  <input value={badgeTitle} onChange={(e) => setBadgeTitle(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="e.g. Math Wizard" required />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Emoji Icon</label>
+                                  <input value={badgeIcon} onChange={(e) => setBadgeIcon(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="🌟" required />
+                                </div>
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <button type="button" onClick={() => setBadgeStudentIc(null)} className="px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-xl">Cancel</button>
+                                <button type="submit" className="px-6 py-2 bg-amber-500 text-white text-sm font-bold rounded-xl shadow-md hover:bg-amber-600 transition-all flex items-center gap-2"><Award size={16} /> Award Badge</button>
+                              </div>
+                            </form>
+                          )}
+
+                          {/* Inline Behavior Form */}
+                          {isBehaving && (
+                            <form onSubmit={handleLogBehavior} className="pt-4 border-t border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300">
+                              <div className="mb-4">
+                                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Log Type</label>
+                                <div className="flex gap-4">
+                                  <label className="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name={`behavior-${s.id}`} value="POSITIVE" checked={behaviorType === 'POSITIVE'} onChange={() => setBehaviorType('POSITIVE')} className="text-emerald-500 focus:ring-emerald-500" />
+                                    <span className="text-sm font-bold text-emerald-600">Positive Praise</span>
+                                  </label>
+                                  <label className="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name={`behavior-${s.id}`} value="WARNING" checked={behaviorType === 'WARNING'} onChange={() => setBehaviorType('WARNING')} className="text-rose-500 focus:ring-rose-500" />
+                                    <span className="text-sm font-bold text-rose-600">Disciplinary Warning</span>
+                                  </label>
+                                </div>
+                              </div>
+                              <div className="mb-4">
+                                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Description</label>
+                                <textarea value={behaviorDesc} onChange={(e) => setBehaviorDesc(e.target.value)} rows={2} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="Detail the behavior..." required />
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <button type="button" onClick={() => setBehaviorStudentIc(null)} className="px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-xl">Cancel</button>
+                                <button type="submit" className={`px-6 py-2 text-white text-sm font-bold rounded-xl shadow-md transition-all flex items-center gap-2 ${behaviorType === 'POSITIVE' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-rose-500 hover:bg-rose-600'}`}><Save size={16} /> Log Record</button>
+                              </div>
+                            </form>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                     {students.filter(s => s.assignedClassId === activeClassId).length === 0 && <p className="col-span-full text-center py-10 text-slate-400 italic">No students enrolled yet.</p>}
                   </div>
                 </div>
@@ -459,7 +543,13 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
                               <p className="text-xs text-slate-500">{SUBJECTS_LIST.find(s => s.id === res.subject)?.name} • {new Date(res.createdAt).toLocaleDateString()}</p>
                             </div>
                           </div>
-                          {/* TODO: Add Delete or View options here if needed */}
+                          <button
+                            onClick={() => onDeleteResource(res.id)}
+                            className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                            title="Delete Resource"
+                          >
+                            <Trash2 size={18} />
+                          </button>
                         </div>
                       ))}
                       {resources.filter(r => r.classId === activeClassId).length === 0 && <p className="text-center py-10 text-slate-400 italic">No resources uploaded yet.</p>}
@@ -508,96 +598,101 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
             </div>
           </div>
         </div>
-      )}
+      )
+      }
 
       {/* Enrollment Modal (Reused) */}
-      {showEnrollModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl p-8 animate-in zoom-in-50 duration-200">
-            <h3 className="text-xl font-black mb-2 text-slate-800">Enroll Student</h3>
-            <p className="text-sm text-slate-500 mb-6">Add a student to {classes.find(c => c.id === activeClassId)?.name || 'this class'}.</p>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Student IC</label>
-                <input value={enrollStudentIc} onChange={(e) => setEnrollStudentIc(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-mono" placeholder="XXXXXX-XX-XXXX" autoFocus />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => { setShowEnrollModal(false); setEnrollStudentIc(''); }} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors">Cancel</button>
-                <button onClick={handleEnrollStudent} className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all">Enroll</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'appointments' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1 bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 h-fit">
-            <h3 className="text-xl font-black mb-6 flex items-center gap-2 text-slate-800"><Calendar className="text-indigo-600" size={24} /> My Availability</h3>
-            <div className="space-y-4">
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                const form = e.target as HTMLFormElement;
-                const date = (form.elements.namedItem('date') as HTMLInputElement).value;
-                const time = (form.elements.namedItem('time') as HTMLInputElement).value;
-                if (date && time) { onAddAvailability({ teacherId: teacher.id, date, time, isBooked: false }); form.reset(); }
-              }}>
-                <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Date</label><input name="date" type="date" className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
-                <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Time Slot</label><input name="time" type="time" className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
-                <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"><Plus size={18} /> Add Slot</button>
-              </form>
-              <div className="mt-8">
-                <h4 className="font-bold text-slate-600 mb-4 text-sm uppercase tracking-widest">Open Slots</h4>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar">
-                  {availabilitySlots.filter(s => s.teacherId === teacher.id && !s.isBooked).map(slot => (
-                    <div key={slot.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
-                      <div><p className="font-bold text-slate-800">{slot.date}</p><p className="text-xs font-mono text-slate-400">{slot.time}</p></div>
-                      <span className="px-2 py-1 bg-emerald-100 text-emerald-600 rounded-lg text-[10px] font-bold uppercase">Open</span>
-                    </div>
-                  ))}
-                  {availabilitySlots.filter(s => s.teacherId === teacher.id && !s.isBooked).length === 0 && <p className="text-center text-slate-400 italic text-sm py-4">No open slots added.</p>}
+      {
+        showEnrollModal && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl p-8 animate-in zoom-in-50 duration-200">
+              <h3 className="text-xl font-black mb-2 text-slate-800">Enroll Student</h3>
+              <p className="text-sm text-slate-500 mb-6">Add a student to {classes.find(c => c.id === activeClassId)?.name || 'this class'}.</p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Student IC</label>
+                  <input value={enrollStudentIc} onChange={(e) => setEnrollStudentIc(e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-mono" placeholder="XXXXXX-XX-XXXX" autoFocus />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => { setShowEnrollModal(false); setEnrollStudentIc(''); }} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors">Cancel</button>
+                  <button onClick={handleEnrollStudent} className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all">Enroll</button>
                 </div>
               </div>
             </div>
           </div>
-          <div className="lg:col-span-2 space-y-8">
-            <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
-              <h3 className="text-xl font-black mb-6 flex items-center gap-2 text-slate-800"><Clock className="text-orange-500" size={24} /> Pending Requests</h3>
+        )
+      }
+
+      {
+        activeTab === 'appointments' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-1 bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 h-fit">
+              <h3 className="text-xl font-black mb-6 flex items-center gap-2 text-slate-800"><Calendar className="text-indigo-600" size={24} /> My Availability</h3>
               <div className="space-y-4">
-                {appointments.filter(a => a.teacherId === teacher.id && a.status === 'PENDING').map(appt => {
-                  const student = students.find(s => s.id === appt.studentId);
-                  return (
-                    <div key={appt.id} className="p-6 bg-slate-50 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                      <div><h4 className="font-black text-slate-800 text-lg">{student?.name}</h4><p className="text-slate-500 text-sm mb-2">{appt.date} at {appt.time}</p><p className="text-slate-700 bg-white p-3 rounded-xl border border-slate-200 text-sm italic">"{appt.reason}"</p></div>
-                      <div className="flex gap-2">
-                        <button onClick={() => onUpdateAppointmentStatus(appt.id, 'APPROVED')} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors flex items-center gap-2"><Check size={16} /> Accept</button>
-                        <button onClick={() => onUpdateAppointmentStatus(appt.id, 'REJECTED')} className="px-4 py-2 bg-rose-600 text-white rounded-xl font-bold hover:bg-rose-700 transition-colors flex items-center gap-2"><X size={16} /> Reject</button>
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const form = e.target as HTMLFormElement;
+                  const date = (form.elements.namedItem('date') as HTMLInputElement).value;
+                  const time = (form.elements.namedItem('time') as HTMLInputElement).value;
+                  if (date && time) { onAddAvailability({ teacherId: teacher.id, date, time, isBooked: false }); form.reset(); }
+                }}>
+                  <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Date</label><input name="date" type="date" className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                  <div><label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Time Slot</label><input name="time" type="time" className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500" required /></div>
+                  <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"><Plus size={18} /> Add Slot</button>
+                </form>
+                <div className="mt-8">
+                  <h4 className="font-bold text-slate-600 mb-4 text-sm uppercase tracking-widest">Open Slots</h4>
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar">
+                    {availabilitySlots.filter(s => s.teacherId === teacher.id && !s.isBooked).map(slot => (
+                      <div key={slot.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div><p className="font-bold text-slate-800">{slot.date}</p><p className="text-xs font-mono text-slate-400">{slot.time}</p></div>
+                        <span className="px-2 py-1 bg-emerald-100 text-emerald-600 rounded-lg text-[10px] font-bold uppercase">Open</span>
                       </div>
-                    </div>
-                  );
-                })}
-                {appointments.filter(a => a.teacherId === teacher.id && a.status === 'PENDING').length === 0 && <div className="text-center py-12 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200"><p className="text-slate-400 font-bold">No pending appointment requests.</p></div>}
+                    ))}
+                    {availabilitySlots.filter(s => s.teacherId === teacher.id && !s.isBooked).length === 0 && <p className="text-center text-slate-400 italic text-sm py-4">No open slots added.</p>}
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
-              <h3 className="text-xl font-black mb-6 flex items-center gap-2 text-slate-800"><Check className="text-emerald-500" size={24} /> Upcoming Appointments</h3>
-              <div className="space-y-4">
-                {appointments.filter(a => a.teacherId === teacher.id && a.status === 'APPROVED').map(appt => {
-                  const student = students.find(s => s.id === appt.studentId);
-                  return (
-                    <div key={appt.id} className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex justify-between items-center">
-                      <div><h4 className="font-black text-slate-800">{student?.name}</h4><p className="text-emerald-600 font-medium text-sm">{appt.date} • {appt.time}</p></div>
-                      <div className="px-4 py-2 bg-white rounded-xl text-xs font-black uppercase tracking-widest text-emerald-600 shadow-sm">Confirmed</div>
-                    </div>
-                  );
-                })}
-                {appointments.filter(a => a.teacherId === teacher.id && a.status === 'APPROVED').length === 0 && <p className="text-center text-slate-400 italic py-4">No upcoming appointments.</p>}
+            <div className="lg:col-span-2 space-y-8">
+              <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
+                <h3 className="text-xl font-black mb-6 flex items-center gap-2 text-slate-800"><Clock className="text-orange-500" size={24} /> Pending Requests</h3>
+                <div className="space-y-4">
+                  {appointments.filter(a => a.teacherId === teacher.id && a.status === 'PENDING').map(appt => {
+                    const student = students.find(s => s.id === appt.studentId);
+                    return (
+                      <div key={appt.id} className="p-6 bg-slate-50 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div><h4 className="font-black text-slate-800 text-lg">{student?.name}</h4><p className="text-slate-500 text-sm mb-2">{appt.date} at {appt.time}</p><p className="text-slate-700 bg-white p-3 rounded-xl border border-slate-200 text-sm italic">"{appt.reason}"</p></div>
+                        <div className="flex gap-2">
+                          <button onClick={() => onUpdateAppointmentStatus(appt.id, 'APPROVED')} className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors flex items-center gap-2"><Check size={16} /> Accept</button>
+                          <button onClick={() => onUpdateAppointmentStatus(appt.id, 'REJECTED')} className="px-4 py-2 bg-rose-600 text-white rounded-xl font-bold hover:bg-rose-700 transition-colors flex items-center gap-2"><X size={16} /> Reject</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {appointments.filter(a => a.teacherId === teacher.id && a.status === 'PENDING').length === 0 && <div className="text-center py-12 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200"><p className="text-slate-400 font-bold">No pending appointment requests.</p></div>}
+                </div>
+              </div>
+              <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
+                <h3 className="text-xl font-black mb-6 flex items-center gap-2 text-slate-800"><Check className="text-emerald-500" size={24} /> Upcoming Appointments</h3>
+                <div className="space-y-4">
+                  {appointments.filter(a => a.teacherId === teacher.id && a.status === 'APPROVED').map(appt => {
+                    const student = students.find(s => s.id === appt.studentId);
+                    return (
+                      <div key={appt.id} className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex justify-between items-center">
+                        <div><h4 className="font-black text-slate-800">{student?.name}</h4><p className="text-emerald-600 font-medium text-sm">{appt.date} • {appt.time}</p></div>
+                        <div className="px-4 py-2 bg-white rounded-xl text-xs font-black uppercase tracking-widest text-emerald-600 shadow-sm">Confirmed</div>
+                      </div>
+                    );
+                  })}
+                  {appointments.filter(a => a.teacherId === teacher.id && a.status === 'APPROVED').length === 0 && <p className="text-center text-slate-400 italic py-4">No upcoming appointments.</p>}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 };
 

@@ -62,6 +62,8 @@ export const update = mutation({
             childIcNumbers: v.optional(v.array(v.string())),
             password: v.optional(v.string()),
             mustChangePassword: v.optional(v.boolean()),
+            avatarUrl: v.optional(v.string()),
+            contactNumber: v.optional(v.string()),
         }),
     },
     handler: async (ctx, args) => {

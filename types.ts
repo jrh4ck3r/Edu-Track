@@ -138,3 +138,23 @@ export interface Notification {
   relatedId?: string;
   createdAt: string;
 }
+
+export type BehaviorType = 'POSITIVE' | 'WARNING';
+
+export interface BehaviorLog {
+  id: string;
+  studentId: string;
+  teacherId: string;
+  type: BehaviorType;
+  description: string;
+  date: string;
+}
+
+export interface Badge {
+  id: string;
+  studentId: string;
+  teacherId: string;
+  title: string;
+  icon: string;
+  dateAwarded: string;
+}
