@@ -117,4 +117,20 @@ export default defineSchema({
         description: v.string(),
         date: v.string(),
     }),
+    pajskRecords: defineTable({
+        studentId: v.string(),
+        teacherId: v.string(),
+        type: v.union(v.literal('KELAB'), v.literal('BADAN_BERUNIFORM'), v.literal('SUKAN')),
+        activityName: v.string(),
+        grade: v.string(), // A, B, C, D, E
+        date: v.string(),
+    }),
+    announcements: defineTable({
+        authorId: v.string(),
+        authorName: v.string(),
+        authorRole: v.string(),
+        title: v.string(),
+        content: v.string(),
+        date: v.string(),
+    }),
 });

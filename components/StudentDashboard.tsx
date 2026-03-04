@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { Mark, Feedback, WellBeingStatus, User, Appointment, AvailabilitySlot, DiscussionPost, DiscussionReply, Badge, BehaviorLog } from '../types';
+import { Mark, Feedback, WellBeingStatus, User, Appointment, AvailabilitySlot, DiscussionPost, DiscussionReply, Badge, BehaviorLog, PAJSKRecord, Announcement } from '../types';
 import { ResponsiveContainer, BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { SUBJECTS_LIST, COLORS } from '../constants';
 import AnalysisCard from './AnalysisCard';
 import { getAcademicInsights, getGradePrediction } from '../services/geminiService';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { Sparkles, Download, MessageSquare, Heart, TrendingUp, BrainCircuit, Loader2, Calendar, Clock, User as UserIcon, Send, MessageCircle, Plus, FileText, CheckCircle, XCircle, Award, AlertCircle } from 'lucide-react';
+import { Sparkles, Download, MessageSquare, Heart, TrendingUp, BrainCircuit, Loader2, Calendar, Clock, User as UserIcon, Send, MessageCircle, Plus, FileText, CheckCircle, XCircle, Award, AlertCircle, Megaphone } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 interface Prediction {
@@ -33,12 +33,14 @@ interface StudentDashboardProps {
   onOpenMessage?: (userId: string) => void;
   badges?: Badge[];
   behaviorLogs?: BehaviorLog[];
+  pajskRecords?: PAJSKRecord[];
+  announcements?: Announcement[];
 }
 
 const StudentDashboard: React.FC<StudentDashboardProps> = ({
   student, marks, allFeedback, teachers, appointments, availabilitySlots,
   onRequestAppointment, discussions, onCreateDiscussion, onReplyDiscussion,
-  attendance, resources, onGetDownloadUrl, onOpenMessage, badges = [], behaviorLogs = []
+  attendance, resources, onGetDownloadUrl, onOpenMessage, badges = [], behaviorLogs = [], pajskRecords = [], announcements = []
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'performance' | 'community'>('overview');
   const [isGeneratingInsight, setIsGeneratingInsight] = useState(false);
@@ -188,117 +190,140 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
       </div>
 
       {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 animate-in fade-in duration-500">
-          {/* Attendance Bento Box */}
-          <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 text-center flex flex-col items-center justify-center">
-            <h3 className="text-lg font-black text-slate-800 mb-6 self-start flex items-center gap-2"><Calendar className="text-indigo-600" size={20} /> Attendance</h3>
-            {(() => {
-              const myAttendance = attendance.filter(a => a.studentId === student.id);
-              const total = myAttendance.length;
-              const present = myAttendance.filter(a => a.status === 'PRESENT').length;
-              const late = myAttendance.filter(a => a.status === 'LATE').length;
-              const percentage = total > 0 ? Math.round(((present + late) / total) * 100) : 100;
-
-              return (
-                <div className="relative inline-flex items-center justify-center mb-4">
-                  <svg className="w-32 h-32 transform -rotate-90">
-                    <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-slate-100" />
-                    <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="12" fill="transparent" strokeDasharray={2 * Math.PI * 56} strokeDashoffset={2 * Math.PI * 56 * (1 - percentage / 100)} className={`text-indigo-600 transition-all duration-1000 ease-out`} strokeLinecap="round" />
-                  </svg>
-                  <div className="absolute flex flex-col items-center">
-                    <span className="text-3xl font-black text-slate-800">{percentage}%</span>
+        <div className="space-y-8 animate-in fade-in duration-500">
+          {/* Announcements Banner */}
+          {announcements.length > 0 && (
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-6 rounded-[2rem] border border-amber-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-amber-100 rounded-xl text-amber-600"><Megaphone size={20} /></div>
+                <h3 className="text-lg font-black text-slate-800">School Announcements</h3>
+              </div>
+              <div className="space-y-3">
+                {announcements.slice(0, 3).map(a => (
+                  <div key={a.id} className="bg-white/80 p-4 rounded-xl border border-amber-100/50">
+                    <div className="flex justify-between items-start mb-1">
+                      <h4 className="font-bold text-slate-800 text-sm">{a.title}</h4>
+                      <span className="text-[10px] font-mono text-slate-400">{new Date(a.date).toLocaleDateString()}</span>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">{a.content}</p>
                   </div>
-                </div>
-              );
-            })()}
-            <button onClick={() => setActiveTab('performance')} className="text-xs font-bold text-indigo-600 hover:text-indigo-800">View History &rarr;</button>
-          </div>
-
-          {/* Upcoming Mentorship Bento */}
-          <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col">
-            <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2"><Clock className="text-orange-500" size={20} /> Upcoming Setup</h3>
-            <div className="flex-1 space-y-3">
-              {appointments.filter(a => a.studentId === student.id && a.status === 'APPROVED').slice(0, 3).map(a => (
-                <div key={a.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                  <div className="flex justify-between items-start mb-1">
-                    <p className="font-bold text-slate-800 text-sm">{teachers.find(t => t.id === a.teacherId)?.name}</p>
-                  </div>
-                  <p className="text-xs text-slate-500 font-mono">{a.date} • {a.time}</p>
-                </div>
-              ))}
-              {appointments.filter(a => a.studentId === student.id && a.status === 'APPROVED').length === 0 && (
-                <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
-                  <CheckCircle size={32} className="mb-2" />
-                  <p className="text-sm font-bold">You're all caught up.</p>
-                </div>
-              )}
+                ))}
+              </div>
             </div>
-            <button onClick={() => setActiveTab('community')} className="mt-4 text-xs font-bold text-indigo-600 hover:text-indigo-800 self-start">Book Session &rarr;</button>
-          </div>
+          )}
 
-          {/* Recent Resources Bento */}
-          <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col">
-            <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2"><FileText className="text-emerald-500" size={20} /> New Files</h3>
-            <div className="flex-1 flex flex-col gap-3">
-              {resources.filter(r => r.classId === student.assignedClassId).slice(0, 3).map(res => (
-                <div key={res.id} className="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-xl hover:shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg"><FileText size={16} /></div>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-800 line-clamp-1">{res.title}</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* Attendance Bento Box */}
+            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 text-center flex flex-col items-center justify-center">
+              <h3 className="text-lg font-black text-slate-800 mb-6 self-start flex items-center gap-2"><Calendar className="text-indigo-600" size={20} /> Attendance</h3>
+              {(() => {
+                const myAttendance = attendance.filter(a => a.studentId === student.id);
+                const total = myAttendance.length;
+                const present = myAttendance.filter(a => a.status === 'PRESENT').length;
+                const late = myAttendance.filter(a => a.status === 'LATE').length;
+                const percentage = total > 0 ? Math.round(((present + late) / total) * 100) : 100;
+
+                return (
+                  <div className="relative inline-flex items-center justify-center mb-4">
+                    <svg className="w-32 h-32 transform -rotate-90">
+                      <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-slate-100" />
+                      <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="12" fill="transparent" strokeDasharray={2 * Math.PI * 56} strokeDashoffset={2 * Math.PI * 56 * (1 - percentage / 100)} className={`text-indigo-600 transition-all duration-1000 ease-out`} strokeLinecap="round" />
+                    </svg>
+                    <div className="absolute flex flex-col items-center">
+                      <span className="text-3xl font-black text-slate-800">{percentage}%</span>
                     </div>
                   </div>
-                  <button onClick={() => handleDownload(res.fileId)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"><Download size={16} /></button>
-                </div>
-              ))}
-              {resources.filter(r => r.classId === student.assignedClassId).length === 0 && (
-                <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60 text-center">
-                  <FileText size={32} className="mb-2" />
-                  <p className="text-sm font-bold">No resources yet.</p>
-                </div>
-              )}
+                );
+              })()}
+              <button onClick={() => setActiveTab('performance')} className="text-xs font-bold text-indigo-600 hover:text-indigo-800">View History &rarr;</button>
             </div>
-          </div>
 
-          {/* Gamification Badges Bento */}
-          <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col">
-            <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
-              <Award className="text-amber-500" size={20} /> My Badges
-            </h3>
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
-              <div className="grid grid-cols-2 gap-3">
-                {badges.length > 0 ? (
-                  badges.map(badge => (
-                    <div key={badge.id} className="flex flex-col items-center justify-center p-4 bg-amber-50 border border-amber-100 rounded-xl text-center group hover:bg-amber-100 transition-colors">
-                      <span className="text-3xl mb-2 group-hover:scale-125 transition-transform duration-300">{badge.icon}</span>
-                      <p className="text-xs font-black text-amber-700 leading-tight">{badge.title}</p>
+            {/* Upcoming Mentorship Bento */}
+            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col">
+              <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2"><Clock className="text-orange-500" size={20} /> Upcoming Setup</h3>
+              <div className="flex-1 space-y-3">
+                {appointments.filter(a => a.studentId === student.id && a.status === 'APPROVED').slice(0, 3).map(a => (
+                  <div key={a.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <div className="flex justify-between items-start mb-1">
+                      <p className="font-bold text-slate-800 text-sm">{teachers.find(t => t.id === a.teacherId)?.name}</p>
                     </div>
-                  ))
-                ) : (
-                  <div className="col-span-2 h-full flex flex-col items-center justify-center text-slate-400 opacity-60 text-center py-6">
-                    <Award size={32} className="mb-2" />
-                    <p className="text-sm font-bold">Earn badges from teachers!</p>
+                    <p className="text-xs text-slate-500 font-mono">{a.date} • {a.time}</p>
+                  </div>
+                ))}
+                {appointments.filter(a => a.studentId === student.id && a.status === 'APPROVED').length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
+                    <CheckCircle size={32} className="mb-2" />
+                    <p className="text-sm font-bold">You're all caught up.</p>
+                  </div>
+                )}
+              </div>
+              <button onClick={() => setActiveTab('community')} className="mt-4 text-xs font-bold text-indigo-600 hover:text-indigo-800 self-start">Book Session &rarr;</button>
+            </div>
+
+            {/* Recent Resources Bento */}
+            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col">
+              <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2"><FileText className="text-emerald-500" size={20} /> New Files</h3>
+              <div className="flex-1 flex flex-col gap-3">
+                {resources.filter(r => r.classId === student.assignedClassId).slice(0, 3).map(res => (
+                  <div key={res.id} className="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-xl hover:shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg"><FileText size={16} /></div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-800 line-clamp-1">{res.title}</h4>
+                      </div>
+                    </div>
+                    <button onClick={() => handleDownload(res.fileId)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"><Download size={16} /></button>
+                  </div>
+                ))}
+                {resources.filter(r => r.classId === student.assignedClassId).length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60 text-center">
+                    <FileText size={32} className="mb-2" />
+                    <p className="text-sm font-bold">No resources yet.</p>
                   </div>
                 )}
               </div>
             </div>
-          </div>
 
-          {/* AI Insight Snippet (Full Width) */}
-          <div className="lg:col-span-4 bg-slate-900 rounded-[2rem] p-8 text-white relative overflow-hidden shadow-2xl flex flex-col md:flex-row items-center gap-8 justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-indigo-500/20 rounded-xl text-indigo-400"><Sparkles size={20} /></div>
-                <h2 className="text-xl font-black">AI Academic Coach</h2>
+            {/* Gamification Badges Bento */}
+            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col">
+              <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
+                <Award className="text-amber-500" size={20} /> My Badges
+              </h3>
+              <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+                <div className="grid grid-cols-2 gap-3">
+                  {badges.length > 0 ? (
+                    badges.map(badge => (
+                      <div key={badge.id} className="flex flex-col items-center justify-center p-4 bg-amber-50 border border-amber-100 rounded-xl text-center group hover:bg-amber-100 transition-colors">
+                        <span className="text-3xl mb-2 group-hover:scale-125 transition-transform duration-300">{badge.icon}</span>
+                        <p className="text-xs font-black text-amber-700 leading-tight">{badge.title}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-2 h-full flex flex-col items-center justify-center text-slate-400 opacity-60 text-center py-6">
+                      <Award size={32} className="mb-2" />
+                      <p className="text-sm font-bold">Earn badges from teachers!</p>
+                    </div>
+                  )}
+                </div>
               </div>
-              <p className="text-indigo-100/80 font-medium">Get a deep-dive analysis of your performance and a custom study blueprint.</p>
             </div>
-            <button
-              onClick={() => { setActiveTab('performance'); setTimeout(generateAIReport, 100); }}
-              className="whitespace-nowrap bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg flex items-center gap-2"
-            >
-              Analyze Progress
-            </button>
+
+            {/* AI Insight Snippet (Full Width) */}
+            <div className="lg:col-span-4 bg-slate-900 rounded-[2rem] p-8 text-white relative overflow-hidden shadow-2xl flex flex-col md:flex-row items-center gap-8 justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-indigo-500/20 rounded-xl text-indigo-400"><Sparkles size={20} /></div>
+                  <h2 className="text-xl font-black">AI Academic Coach</h2>
+                </div>
+                <p className="text-indigo-100/80 font-medium">Get a deep-dive analysis of your performance and a custom study blueprint.</p>
+              </div>
+              <button
+                onClick={() => { setActiveTab('performance'); setTimeout(generateAIReport, 100); }}
+                className="whitespace-nowrap bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg flex items-center gap-2"
+              >
+                Analyze Progress
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -556,6 +581,49 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   <p className="text-center py-12 text-slate-400 italic">No resources available.</p>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Kokurikulum (PAJSK) Record */}
+          <div className="bg-white p-6 md:p-10 rounded-[2rem] shadow-sm border border-slate-100 mb-8" data-html2canvas-ignore>
+            <div className="flex items-center gap-4 mb-8">
+              <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600 border border-emerald-100">
+                <Award size={28} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black tracking-tight text-slate-800">Kokurikulum (PAJSK)</h2>
+                <p className="text-slate-500 text-sm font-medium">Extracurricular achievements and involvement.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {pajskRecords.length > 0 ? (
+                pajskRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(record => (
+                  <div key={record.id} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-3">
+                    <div className="flex justify-between items-start">
+                      <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                        {record.type.replace('_', ' ')}
+                      </span>
+                      <span className="text-xs font-mono font-bold text-slate-400">{new Date(record.date).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex items-end justify-between mt-2">
+                      <p className="font-bold text-slate-800 leading-tight">
+                        {record.activityName}
+                      </p>
+                      <div className="flex flex-col items-end">
+                        <span className="text-[10px] uppercase font-bold text-slate-400">Tahap</span>
+                        <span className="text-2xl font-black text-emerald-600">{record.grade}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full py-12 flex flex-col items-center justify-center text-slate-400 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                  <Award size={32} className="mb-3 opacity-50" />
+                  <p className="font-bold">No PAJSK records logged.</p>
+                  <p className="text-sm">Get involved in clubs or sports!</p>
+                </div>
+              )}
             </div>
           </div>
 

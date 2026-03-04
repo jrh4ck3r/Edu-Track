@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { User, Mark, Feedback, WellBeingStatus, SchoolClass, Appointment, AvailabilitySlot, AttendanceRecord, Resource, AttendanceStatus, Badge, BehaviorLog, BehaviorType } from '../types';
+import { User, Mark, Feedback, WellBeingStatus, SchoolClass, Appointment, AvailabilitySlot, AttendanceRecord, Resource, AttendanceStatus, Badge, BehaviorLog, BehaviorType, PAJSKRecord, Announcement } from '../types';
 import { SUBJECTS_LIST, ASSESSMENT_TYPES } from '../constants';
-import { Plus, Save, User as UserIcon, BookOpen, ClipboardCheck, History, Search, LayoutGrid, Calendar, Clock, Check, X, FileText, Download, Upload, Trash2, Filter, Award, AlertCircle } from 'lucide-react';
+import { Plus, Save, User as UserIcon, BookOpen, ClipboardCheck, History, Search, LayoutGrid, Calendar, Clock, Check, X, FileText, Download, Upload, Trash2, Filter, Award, AlertCircle, Megaphone } from 'lucide-react';
 
 interface TeacherPortalProps {
     teacher: User;
@@ -27,6 +27,10 @@ interface TeacherPortalProps {
     onOpenMessage?: (userId: string) => void;
     onAwardBadge?: (badge: Omit<Badge, 'id'>) => void;
     onLogBehavior?: (log: Omit<BehaviorLog, 'id'>) => void;
+    onAddPajsk?: (record: Omit<PAJSKRecord, 'id'>) => void;
+    announcements?: Announcement[];
+    onCreateAnnouncement?: (data: Omit<Announcement, 'id' | 'date'>) => void;
+    onDeleteAnnouncement?: (id: string) => void;
 }
 
 const TeacherPortal: React.FC<TeacherPortalProps> = ({
@@ -34,7 +38,7 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
     onEnrollStudent, onUpdateClass, appointments, availabilitySlots,
     onAddAvailability, onUpdateAppointmentStatus,
     attendance, onSaveAttendance, resources, onUploadResource, onGetUploadUrl, onUploadFile,
-    onDeleteResource, onRemoveFromClass, onOpenMessage, onAwardBadge, onLogBehavior
+    onDeleteResource, onRemoveFromClass, onOpenMessage, onAwardBadge, onLogBehavior, onAddPajsk, announcements = [], onCreateAnnouncement, onDeleteAnnouncement
 }) => {
     const [selectedStudentIc, setSelectedStudentIc] = useState('');
     const [selectedSubjectId, setSelectedSubjectId] = useState('');
@@ -44,7 +48,7 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
     const [comment, setComment] = useState('');
     const [wellBeing, setWellBeing] = useState(WellBeingStatus.GOOD);
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeTab, setActiveTab] = useState<'classrooms' | 'appointments'>('classrooms');
+    const [activeTab, setActiveTab] = useState<'classrooms' | 'appointments' | 'announcements'>('classrooms');
 
     // Class Management State
     const [activeClassId, setActiveClassId] = useState<string | null>(null);
@@ -59,6 +63,15 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
 
     const [behaviorType, setBehaviorType] = useState<BehaviorType>('POSITIVE');
     const [behaviorDesc, setBehaviorDesc] = useState('');
+
+    const [pajskStudentIc, setPajskStudentIc] = useState<string | null>(null);
+    const [pajskType, setPajskType] = useState<'KELAB' | 'BADAN_BERUNIFORM' | 'SUKAN'>('KELAB');
+    const [pajskName, setPajskName] = useState('');
+    const [pajskGrade, setPajskGrade] = useState('A');
+
+    // Announcement State
+    const [announcementTitle, setAnnouncementTitle] = useState('');
+    const [announcementContent, setAnnouncementContent] = useState('');
 
     // Attendance State
     const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
@@ -233,6 +246,24 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
         setBehaviorDesc('');
     };
 
+    const handleLogPajsk = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!pajskStudentIc || !pajskName || !onAddPajsk) return;
+        const sId = students.find(s => s.icNumber === pajskStudentIc)?.id;
+        if (sId) {
+            onAddPajsk({
+                studentId: sId,
+                teacherId: teacher.id,
+                type: pajskType,
+                activityName: pajskName,
+                grade: pajskGrade,
+                date: new Date().toISOString()
+            });
+        }
+        setPajskStudentIc(null);
+        setPajskName('');
+    };
+
     const filteredStudents = students.filter(s =>
         (s.assignedClassId && teacherClassIds.includes(s.assignedClassId)) &&
         (s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -251,6 +282,7 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
                 </div>
                 <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
                     <button onClick={() => setActiveTab('classrooms')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'classrooms' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>My Classrooms</button>
+                    <button onClick={() => setActiveTab('announcements')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'announcements' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>Announcements</button>
                     <button onClick={() => setActiveTab('appointments')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'appointments' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>Appointments</button>
                 </div>
             </div>
@@ -315,7 +347,8 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
                                             const isObserving = observingStudentIc === s.icNumber;
                                             const isBadging = badgeStudentIc === s.icNumber;
                                             const isBehaving = behaviorStudentIc === s.icNumber;
-                                            const isActivePanel = isGrading || isObserving || isBadging || isBehaving;
+                                            const isPajsking = pajskStudentIc === s.icNumber;
+                                            const isActivePanel = isGrading || isObserving || isBadging || isBehaving || isPajsking;
 
                                             return (
                                                 <div key={s.id} className={`p-4 bg-slate-50 rounded-2xl flex flex-col gap-4 border-2 transition-all ${isActivePanel ? 'col-span-full border-indigo-200 bg-white shadow-xl' : 'border-transparent'}`}>
@@ -349,11 +382,18 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
                                                                 <Award size={14} className="inline mr-1" /> Badge
                                                             </button>
                                                             <button
-                                                                onClick={() => { setBehaviorStudentIc(isBehaving ? null : s.icNumber || null); setGradingStudentIc(null); setObservingStudentIc(null); setBadgeStudentIc(null); }}
+                                                                onClick={() => { setBehaviorStudentIc(isBehaving ? null : s.icNumber || null); setGradingStudentIc(null); setObservingStudentIc(null); setBadgeStudentIc(null); setPajskStudentIc(null); }}
                                                                 className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${isBehaving ? 'bg-slate-800 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}
                                                                 title="Log Behavior"
                                                             >
                                                                 <AlertCircle size={14} className="inline mr-1" /> Log
+                                                            </button>
+                                                            <button
+                                                                onClick={() => { setPajskStudentIc(isPajsking ? null : s.icNumber || null); setGradingStudentIc(null); setObservingStudentIc(null); setBadgeStudentIc(null); setBehaviorStudentIc(null); }}
+                                                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${isPajsking ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
+                                                                title="Log PAJSK (Kokurikulum)"
+                                                            >
+                                                                PAJSK
                                                             </button>
                                                             {onOpenMessage && (
                                                                 <button
@@ -491,8 +531,42 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
                                                             </div>
                                                         </form>
                                                     )}
+
+                                                    {/* Inline PAJSK Form */}
+                                                    {isPajsking && (
+                                                        <form onSubmit={handleLogPajsk} className="pt-4 border-t border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                                                <div>
+                                                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Category</label>
+                                                                    <select value={pajskType} onChange={(e) => setPajskType(e.target.value as any)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+                                                                        <option value="KELAB">Kelab & Persatuan</option>
+                                                                        <option value="SUKAN">Sukan & Permainan</option>
+                                                                        <option value="BADAN_BERUNIFORM">Badan Beruniform</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Activity Name</label>
+                                                                    <input type="text" value={pajskName} onChange={(e) => setPajskName(e.target.value)} placeholder="e.g. Pengakap" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm" required />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Grade</label>
+                                                                    <select value={pajskGrade} onChange={(e) => setPajskGrade(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+                                                                        <option value="A">Grade A (Cemerlang)</option>
+                                                                        <option value="B">Grade B (Kepujian)</option>
+                                                                        <option value="C">Grade C (Baik)</option>
+                                                                        <option value="D">Grade D (Memuaskan)</option>
+                                                                        <option value="E">Grade E (Kurang)</option>
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex justify-end gap-2">
+                                                                <button type="button" onClick={() => setPajskStudentIc(null)} className="px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-xl">Cancel</button>
+                                                                <button type="submit" className="px-6 py-2 bg-emerald-600 text-white text-sm font-bold rounded-xl shadow-md hover:bg-emerald-700 transition-all flex items-center gap-2"><Save size={16} /> Save PAJSK</button>
+                                                            </div>
+                                                        </form>
+                                                    )}
                                                 </div>
-                                            )
+                                            );
                                         })}
                                         {students.filter(s => s.assignedClassId === activeClassId).length === 0 && <p className="col-span-full text-center py-10 text-slate-400 italic">No students enrolled yet.</p>}
                                     </div>
@@ -715,7 +789,94 @@ const TeacherPortal: React.FC<TeacherPortalProps> = ({
                     </div>
                 )
             }
-        </div >
+
+            {activeTab === 'announcements' && (
+                <div className="mt-8">
+                    <div className="bg-white p-6 md:p-10 rounded-[2rem] shadow-sm border border-slate-100">
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="p-3 bg-amber-50 rounded-2xl text-amber-600 border border-amber-100">
+                                <Megaphone size={28} />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-black tracking-tight text-slate-800">School Announcements</h2>
+                                <p className="text-slate-500 text-sm font-medium">Broadcast information to all students and parents.</p>
+                            </div>
+                        </div>
+
+                        {onCreateAnnouncement && (
+                            <div className="bg-slate-50 p-6 rounded-2xl mb-8">
+                                <h4 className="font-black text-slate-800 mb-4 flex items-center gap-2"><Megaphone size={18} /> Create Announcement</h4>
+                                <div className="space-y-4">
+                                    <input
+                                        type="text"
+                                        placeholder="Announcement Title"
+                                        value={announcementTitle}
+                                        onChange={(e) => setAnnouncementTitle(e.target.value)}
+                                        className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-amber-500 text-sm font-bold"
+                                    />
+                                    <textarea
+                                        placeholder="Announcement content..."
+                                        value={announcementContent}
+                                        onChange={(e) => setAnnouncementContent(e.target.value)}
+                                        className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+                                        rows={3}
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            if (!announcementTitle || !announcementContent) return;
+                                            onCreateAnnouncement({
+                                                authorId: teacher.id,
+                                                authorName: teacher.name,
+                                                authorRole: teacher.role,
+                                                title: announcementTitle,
+                                                content: announcementContent,
+                                            });
+                                            setAnnouncementTitle('');
+                                            setAnnouncementContent('');
+                                            alert('Announcement posted!');
+                                        }}
+                                        className="px-6 py-3 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 transition-colors flex items-center gap-2 shadow-lg shadow-amber-100"
+                                    >
+                                        <Megaphone size={16} /> Post Announcement
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="space-y-4">
+                            {announcements.length > 0 ? (
+                                announcements.map(a => (
+                                    <div key={a.id} className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <h4 className="font-black text-slate-800">{a.title}</h4>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xs font-mono text-slate-400">{new Date(a.date).toLocaleDateString()}</span>
+                                                {onDeleteAnnouncement && (
+                                                    <button
+                                                        onClick={() => { if (window.confirm('Delete this announcement?')) onDeleteAnnouncement(a.id); }}
+                                                        className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                                        title="Delete announcement"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-slate-600 leading-relaxed mb-3">{a.content}</p>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Posted by {a.authorName} ({a.authorRole})</p>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="py-12 flex flex-col items-center justify-center text-slate-400 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                                    <Megaphone size={32} className="mb-3 opacity-50" />
+                                    <p className="font-bold">No announcements yet.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 

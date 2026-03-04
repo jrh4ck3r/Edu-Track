@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Mark, Feedback, WellBeingStatus, SchoolClass, Appointment, AvailabilitySlot, DiscussionPost, DiscussionReply, Resource, AttendanceRecord } from './types';
+import { User, Mark, Feedback, WellBeingStatus, SchoolClass, Appointment, AvailabilitySlot, DiscussionPost, DiscussionReply, Resource, AttendanceRecord, PAJSKRecord, Announcement } from './types';
 import { mockUsers, mockMarks, mockFeedbacks, mockClasses } from './mockData';
 import { SUBJECTS_LIST } from './constants';
 import StudentDashboard from './components/StudentDashboard';
@@ -7,7 +7,7 @@ import TeacherPortal from './components/TeacherPortal';
 import AdminPortal from './components/AdminPortal';
 import NotificationCenter from './components/NotificationCenter';
 import MessageDrawer from './components/MessageDrawer';
-import { LayoutDashboard, GraduationCap, Users, Settings, LogOut, ChevronRight, Search, PlusCircle, CreditCard, Menu, X, Lock, ArrowLeft, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, GraduationCap, Users, Settings, LogOut, ChevronRight, Search, PlusCircle, CreditCard, Menu, X, Lock, ArrowLeft, MessageSquare, Moon, Sun } from 'lucide-react';
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "./convex/_generated/api";
@@ -25,6 +25,7 @@ const App: React.FC = () => {
   const discussionsSource = useQuery(api.discussions.list) || [];
   const attendanceSource = useQuery(api.attendance.getAll) || [];
   const resourcesSource = useQuery(api.resources.getAll) || [];
+  const announcementsSource = useQuery((api as any).announcements?.getAnnouncements) || [];
 
   // Temporary fix since we don't have user filtering up here for simplicity
   // we'll fetch all messages. In reality, filter by user.
@@ -72,6 +73,7 @@ const App: React.FC = () => {
 
   // Local state for authentication (still needed locally until auth provider is fully set up, but we use DB users)
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
 
 
 
@@ -418,9 +420,15 @@ const App: React.FC = () => {
   const userBadgesQueryArg = currentUser?.role === 'STUDENT' ? { studentId: currentUser._id as string } : (currentUser?.role === 'PARENT' && activeChild) ? { studentId: activeChild._id as string } : "skip";
   const badgesQuery = useQuery((api as any).badges?.getStudentBadges, userBadgesQueryArg === "skip" ? "skip" : userBadgesQueryArg) || [];
   const behaviorsQuery = useQuery((api as any).behavior?.getStudentBehaviorLogs, userBadgesQueryArg === "skip" ? "skip" : userBadgesQueryArg) || [];
+  const pajskQuery = useQuery((api as any).pajsk?.getStudentRecords, userBadgesQueryArg === "skip" ? "skip" : userBadgesQueryArg) || [];
+
+  const addPajskRecordMutation = useMutation((api as any).pajsk?.addRecord);
+  const createAnnouncementMutation = useMutation((api as any).announcements?.createAnnouncement);
 
   const userBadges = React.useMemo(() => badgesQuery.map((b: any) => ({ ...b, id: b._id })), [badgesQuery]);
   const userBehaviors = React.useMemo(() => behaviorsQuery.map((b: any) => ({ ...b, id: b._id })), [behaviorsQuery]);
+  const userPajsk = React.useMemo(() => pajskQuery.map((b: any) => ({ ...b, id: b._id })), [pajskQuery]);
+  const announcements: Announcement[] = React.useMemo(() => announcementsSource.map((a: any) => ({ ...a, id: a._id })), [announcementsSource]);
 
   if (!currentUser && !showPasswordChange) {
     return (
@@ -578,9 +586,9 @@ const App: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+    <div className={`min-h-screen flex flex-col md:flex-row transition-colors duration-300 ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50'}`}>
       {/* Mobile Header */}
-      <div className="md:hidden bg-slate-900 text-white p-4 flex items-center justify-between sticky top-0 z-40 shadow-md">
+      <div className={`md:hidden ${isDarkMode ? 'bg-slate-900' : 'bg-slate-900'} text-white p-4 flex items-center justify-between sticky top-0 z-40 shadow-md`}>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shrink-0 shadow-lg shadow-indigo-500/20">
             <GraduationCap size={20} />
@@ -716,15 +724,27 @@ const App: React.FC = () => {
 
       {/* Main Content */}
       <main className={`
-        flex-1 bg-slate-50 min-h-[calc(100vh-64px)] md:min-h-screen transition-all duration-300
-        md:ml-20 lg:ml-72
+        flex-1 min-h-[calc(100vh-64px)] md:min-h-screen transition-all duration-300
+        md:ml-20 lg:ml-72 ${isDarkMode ? 'bg-slate-950' : 'bg-slate-50'}
       `}>
         <div className="p-4 md:p-6 lg:p-10">
           <div className="flex justify-end mb-6 gap-4">
+            <button
+              onClick={() => {
+                setIsDarkMode(prev => {
+                  const next = !prev;
+                  localStorage.setItem('darkMode', String(next));
+                  return next;
+                });
+              }}
+              className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'text-amber-400 hover:bg-slate-800' : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100'}`}
+              title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {isDarkMode ? <Sun size={22} /> : <Moon size={22} />}
+            </button>
             {currentUser.id && (
-              <button onClick={() => setShowMessageDrawer(true)} className="relative p-2 text-slate-400 hover:text-indigo-600 transition-colors">
+              <button onClick={() => setShowMessageDrawer(true)} className={`relative p-2 transition-colors ${isDarkMode ? 'text-slate-400 hover:text-indigo-400' : 'text-slate-400 hover:text-indigo-600'}`}>
                 <MessageSquare size={24} />
-                {/* Optional: Add unread badge here if we calculate it */}
               </button>
             )}
             {currentUser.id && <NotificationCenter userId={currentUser.id} />}
@@ -747,6 +767,8 @@ const App: React.FC = () => {
               onGetDownloadUrl={async (fileId) => { return await getDownloadUrlMutation({ fileId }); }}
               badges={userBadges}
               behaviorLogs={userBehaviors}
+              pajskRecords={userPajsk}
+              announcements={announcements}
             />
 
           )}
@@ -768,6 +790,8 @@ const App: React.FC = () => {
               onGetDownloadUrl={async (fileId) => { return await getDownloadUrlMutation({ fileId }); }}
               badges={userBadges}
               behaviorLogs={userBehaviors}
+              pajskRecords={userPajsk}
+              announcements={announcements}
             />
 
           )}
@@ -797,6 +821,9 @@ const App: React.FC = () => {
               onOpenMessage={(id) => { setPreselectedMessageUserId(id); setShowMessageDrawer(true); }}
               onAwardBadge={(badge) => awardBadgeMutation(badge)}
               onLogBehavior={(log) => logBehaviorMutation(log)}
+              onAddPajsk={(record) => addPajskRecordMutation(record)}
+              announcements={announcements}
+              onCreateAnnouncement={(data) => createAnnouncementMutation(data)}
             />
           )}
 

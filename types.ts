@@ -160,3 +160,25 @@ export interface Badge {
   icon: string;
   dateAwarded: string;
 }
+
+export type PAJSKType = 'KELAB' | 'BADAN_BERUNIFORM' | 'SUKAN';
+
+export interface PAJSKRecord {
+  id: string;
+  studentId: string;
+  teacherId: string;
+  type: PAJSKType;
+  activityName: string;
+  grade: string;
+  date: string;
+}
+
+export interface Announcement {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorRole: string;
+  title: string;
+  content: string;
+  date: string;
+}
