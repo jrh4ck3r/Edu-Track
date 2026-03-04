@@ -62,13 +62,24 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
   const chartData = useMemo(() => {
     return SUBJECTS_LIST.map(sub => {
-      const mark = marks.find(m => m.subjectId === sub.id);
+      const mark = marks.find(m => m.subjectId === sub.id && m.studentIcNumber === student.icNumber);
+      if (!mark) return { subject: sub.name, score: 0 };
+
+      let calculatedScore = 0;
+      if (mark.assessmentType === 'PBD' && mark.tahapPenguasaan) {
+        // Convert TP1-TP6 to a rough percentage for the chart (TP1=16%, TP6=100%)
+        const tpLevel = parseInt(mark.tahapPenguasaan.replace('TP', ''));
+        calculatedScore = Math.round((tpLevel / 6) * 100);
+      } else if (mark.score && mark.maxScore) {
+        calculatedScore = (mark.score / mark.maxScore) * 100;
+      }
+
       return {
         subject: sub.name,
-        score: mark ? (mark.score / mark.maxScore) * 100 : 0,
+        score: calculatedScore,
       };
     });
-  }, [marks]);
+  }, [marks, student.icNumber]);
 
   const tooltipCursor = useMemo(() => ({ fill: '#f8fafc' }), []);
   const tooltipStyle = useMemo(() => ({ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }), []);
@@ -423,7 +434,20 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <td className="py-4 pl-4 font-bold text-slate-700">{SUBJECTS_LIST.find(s => s.id === mark.subjectId)?.name}</td>
                             <td className="py-4 text-sm text-slate-500 font-medium">{mark.assessmentType}</td>
                             <td className="py-4 text-sm text-slate-400 font-mono">{mark.date}</td>
-                            <td className="py-4 text-right font-black text-indigo-600">{mark.score}/{mark.maxScore}</td>
+                            <td className="py-4 text-right font-black text-indigo-600">
+                              {mark.assessmentType === 'PBD' && mark.tahapPenguasaan ? (
+                                <span className={`px-2 py-1 rounded border text-xs ${mark.tahapPenguasaan === 'TP6' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
+                                  mark.tahapPenguasaan === 'TP5' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                    mark.tahapPenguasaan === 'TP4' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                      mark.tahapPenguasaan === 'TP3' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                        'bg-rose-50 text-rose-700 border-rose-200'
+                                  }`}>
+                                  {mark.tahapPenguasaan}
+                                </span>
+                              ) : (
+                                `${mark.score}/${mark.maxScore}`
+                              )}
+                            </td>
                             <td className="py-4 text-right pr-4">
                               {mark.attachmentId ? (
                                 <button
