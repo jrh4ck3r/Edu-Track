@@ -415,7 +415,7 @@ const App: React.FC = () => {
     : null;
 
   // LIVE CONVEX QUERIES FOR NEW FEATURES
-  const userBadgesQueryArg = currentUser?.role === 'STUDENT' ? { studentId: currentUser.icNumber } : (currentUser?.role === 'PARENT' && activeChild) ? { studentId: activeChild.icNumber } : "skip";
+  const userBadgesQueryArg = currentUser?.role === 'STUDENT' ? { studentId: currentUser._id as string } : (currentUser?.role === 'PARENT' && activeChild) ? { studentId: activeChild._id as string } : "skip";
   const badgesQuery = useQuery((api as any).badges?.getStudentBadges, userBadgesQueryArg === "skip" ? "skip" : userBadgesQueryArg) || [];
   const behaviorsQuery = useQuery((api as any).behavior?.getStudentBehaviorLogs, userBadgesQueryArg === "skip" ? "skip" : userBadgesQueryArg) || [];
 
