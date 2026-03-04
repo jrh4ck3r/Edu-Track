@@ -47,6 +47,8 @@ export interface Mark {
   maxScore: number;
   assessmentType: string;
   date: string;
+  attachmentId?: string;
+  grade?: string;
 }
 
 export interface Feedback {

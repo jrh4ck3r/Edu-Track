@@ -1,24 +1,23 @@
+
 export const THRESHOLDS = {
     GOOD: 75,
     NEEDS_IMPROVEMENT: 50,
 };
 
 export const ASSESSMENT_TYPES = [
-    'PBD',
-    'UASA',
-    'Midterm',
-    'Quiz',
-    'Homework'
+    'Ujian Akhir Sesi Akademik (UASA)',
+    'Peperiksaan Pertengahan Tahun (PPT)',
+    'PBD Formative'
 ];
 
 export const SUBJECTS_LIST = [
     { id: '1', name: 'Bahasa Melayu' },
     { id: '2', name: 'English' },
-    { id: '3', name: 'Matematik' },
-    { id: '4', name: 'Sains' },
-    { id: '5', name: 'Sejarah' },
-    { id: '6', name: 'Pendidikan Islam' },
-    { id: '7', name: 'Pendidikan Moral' },
+    { id: '3', name: 'Mathematics (Matematik)' },
+    { id: '4', name: 'Science (Sains)' },
+    { id: '5', name: 'History (Sejarah)' },
+    { id: '6', name: 'Pendidikan Islam / Moral' },
+    { id: '7', name: 'Reka Bentuk dan Teknologi (RBT)' }
 ];
 
 export const COLORS = {

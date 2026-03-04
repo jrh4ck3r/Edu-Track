@@ -13,15 +13,12 @@ export const addMark = mutation({
     args: {
         studentIcNumber: v.string(),
         subjectId: v.string(),
-        score: v.optional(v.number()),
-        tahapPenguasaan: v.optional(v.union(
-            v.literal('TP1'), v.literal('TP2'), v.literal('TP3'),
-            v.literal('TP4'), v.literal('TP5'), v.literal('TP6')
-        )),
-        maxScore: v.optional(v.number()),
+        score: v.number(),
+        maxScore: v.number(),
         assessmentType: v.string(),
         date: v.string(),
         attachmentId: v.optional(v.string()),
+        grade: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         return await ctx.db.insert("marks", args);
